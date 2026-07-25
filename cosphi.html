@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Công cụ tính Cosφ &amp; Công suất phản kháng — Solar C&amp;I</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* blue - lagging / solar */
+    --series-2:       #eb6834; /* orange - leading */
+    --good:           #0ca30c;
+    --critical:       #d03b3b;
+    --warning:        #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --good:           #0ca30c;
+      --critical:       #e66767;
+      --warning:        #fab219;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+  }
+  .app { max-width: 1000px; margin: 0 auto; padding: 20px 16px 60px; }
+  header.top { margin-bottom: 16px; }
+  header.top h1 { font-size: 20px; margin: 0 0 4px; }
+  header.top p { margin: 0; color: var(--text-secondary); font-size: 13.5px; }
+  .unitbar { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--text-secondary); }
+  .unitbar select {
+    font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-1); color: var(--text-primary);
+  }
+
+  nav.tabs { display:flex; flex-wrap:wrap; gap:6px; margin: 18px 0 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .tabbtn {
+    font-size: 13.5px; padding: 8px 14px; border-radius: 8px; border: 1px solid transparent;
+    background: transparent; color: var(--text-secondary); cursor: pointer; font-family: inherit;
+  }
+  .tabbtn:hover { background: var(--border); }
+  .tabbtn.active { background: var(--series-1); color: #fff; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .card h3 { font-size: 13px; margin: 0 0 10px; color: var(--text-secondary); font-weight: 600; }
+  .subtle { color: var(--text-secondary); font-size: 12.5px; margin: 4px 0 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .field label { display:block; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 5px; }
+  .field label .hint { color: var(--muted); font-weight: normal; }
+  .input-row { display:flex; align-items:center; gap:8px; }
+  input[type=number], input[type=text] {
+    width: 100%; font-size: 14px; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--page-plane); color: var(--text-primary); font-family: inherit;
+  }
+  input[type=number]:focus, input[type=text]:focus { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .unit { font-size: 12.5px; color: var(--muted); min-width: 40px; }
+  .checkline { display:flex; align-items:center; gap:8px; font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg input[type=radio] { display: none; }
+  .seg label {
+    padding: 6px 12px; cursor: pointer; font-size: 12.5px; color: var(--text-secondary);
+    background: var(--surface-1); margin: 0; white-space: nowrap;
+  }
+  .seg input[type=radio]:checked + label { background: var(--series-1); color: #fff; }
+  .seg + .seg { margin-left: 8px; }
+
+  /* Stacked variant for options whose label text is a full descriptive sentence
+     rather than a short 1-3 word value — a pill row squeezes/overflows on mobile. */
+  .seg.seg-vertical { display: flex; flex-direction: column; gap: 8px; border: none; border-radius: 0; overflow: visible; width: 100%; }
+  .seg.seg-vertical label { white-space: normal; border-radius: 8px; border: 1px solid var(--border); line-height: 1.4; }
+
+  .hidden { display: none !important; }
+
+  .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 10px; margin-top: 4px; }
+  .result-tile {
+    background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+  }
+  .result-tile .rlabel { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+  .result-tile .rvalue { font-size: 17px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .result-tile .rvalue .u { font-size: 12px; color: var(--text-secondary); font-weight: 400; margin-left: 3px; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge-lag  { background: rgba(42,120,214,0.14); color: var(--series-1); }
+  .badge-lead { background: rgba(235,104,52,0.14); color: var(--series-2); }
+  .badge-good { background: rgba(12,163,12,0.14); color: var(--good); }
+  .badge-critical { background: rgba(208,59,59,0.14); color: var(--critical); }
+  .badge-flow-export { background: rgba(12,163,12,0.14); color: var(--good); }
+  .badge-flow-import { background: rgba(250,178,25,0.22); color: var(--text-primary); }
+
+  .notebox { border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-top: 12px; }
+  .notebox.info { background: rgba(42,120,214,0.08); border: 1px solid rgba(42,120,214,0.25); color: var(--text-primary); }
+  .notebox.warn { background: rgba(208,59,59,0.08); border: 1px solid rgba(208,59,59,0.3); color: var(--text-primary); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: right; padding: 7px 8px; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--muted); font-weight: 600; font-size: 11.5px; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid var(--gridline); }
+  tr.row-highlight td { background: rgba(42,120,214,0.08); font-weight: 600; }
+
+  .scenario-card { margin-bottom: 12px; }
+  .scenario-card.row-highlight-card { border-color: var(--series-1); box-shadow: 0 0 0 1px var(--series-1); }
+  .scenario-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .scenario-name {
+    font-size:14px; font-weight:600; border:none; background:transparent; padding:4px 2px;
+    border-bottom:1px dashed var(--border); flex:1; color: var(--text-primary); font-family: inherit;
+  }
+  .scenario-name:focus { outline:none; border-bottom-color: var(--series-1); }
+  .btn-remove, .btn-add {
+    font-size:12.5px; padding:6px 12px; border-radius:8px; border:1px solid var(--border);
+    background: var(--page-plane); color: var(--text-secondary); cursor:pointer; font-family:inherit; white-space:nowrap;
+  }
+  .btn-remove:hover { background: rgba(208,59,59,0.1); color: var(--critical); border-color: rgba(208,59,59,0.3); }
+  .btn-add { background: var(--series-1); color:#fff; border-color: transparent; margin-top: 10px; }
+  .btn-add:hover { opacity:0.9; }
+
+  .chart-container { position: relative; margin-top: 10px; }
+  .chart-svg { width: 100%; height: auto; display:block; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axislabel { fill: var(--muted); font-size: 10px; }
+  .baseline-l { stroke: var(--baseline); stroke-width: 1; }
+  .chart-line { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .marker { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; cursor: pointer; }
+  .bar { fill: var(--series-1); cursor: pointer; }
+  .bar.recommend { fill: var(--series-2); }
+  .chart-tooltip {
+    position: absolute; display: none; background: var(--text-primary); color: var(--surface-1);
+    font-size: 12px; padding: 4px 9px; border-radius: 6px; pointer-events: none; white-space: nowrap; z-index: 5;
+  }
+
+  footer.appfoot { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
+  code { background: var(--border); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  ul.ref { padding-left: 20px; font-size: 13.5px; line-height: 1.7; }
+  .formula { background: var(--page-plane); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; margin: 8px 0; overflow-x: auto; white-space: pre; }
+  .diagram { background: var(--page-plane); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; line-height: 1.5; margin: 8px 0; overflow-x: auto; white-space: pre; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <h1>Công cụ tính Cosφ &amp; Công suất phản kháng — Solar C&amp;I</h1>
+    <p>Cho solar sau công tơ (behind-the-meter): tải + solar + tụ bù đấu chung thanh cái hạ áp, qua 1 MBA để đấu nối EVN. Chạy hoàn toàn offline, không lưu dữ liệu.</p>
+    <div class="unitbar">
+      <label for="unitSelect">Đơn vị công suất:</label>
+      <select id="unitSelect">
+        <option value="kW">kW / kVAr / kVA</option>
+        <option value="MW">MW / MVAr / MVA</option>
+      </select>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tabbtn active" data-target="tab1">1. Chuyển đổi P–Q–S–cosφ</button>
+    <button class="tabbtn" data-target="tab2">2. Cosφ tại điểm đấu nối EVN</button>
+    <button class="tabbtn" data-target="tab3">3. Set cosφ inverter theo mục tiêu</button>
+    <button class="tabbtn" data-target="tab4">4. Dung lượng tụ bù cần lắp</button>
+    <button class="tabbtn" data-target="tab6">5. P_solar tối đa (cosφ inv cố định)</button>
+    <button class="tabbtn" data-target="tab7">6. Tụ bù tự động: ảnh hưởng vị trí CT</button>
+    <button class="tabbtn" data-target="tab5">7. Sơ đồ, quy ước &amp; công thức</button>
+  </nav>
+
+  <!-- ============ TAB 1 ============ -->
+  <section id="tab1" class="panel active">
+    <div class="card">
+      <h2>Chuyển đổi P – Q – S – cosφ</h2>
+      <p class="subtle">Chọn 2 thông số đã biết, công cụ tính các thông số còn lại. Dùng khi chỉ cần tra nhanh 1 điểm đo bất kỳ.</p>
+
+      <div class="seg" style="margin-bottom:14px;">
+        <input type="radio" name="t1mode" id="t1mode_pcos" value="pcos" checked><label for="t1mode_pcos">Biết P &amp; cosφ</label>
+        <input type="radio" name="t1mode" id="t1mode_pq" value="pq"><label for="t1mode_pq">Biết P &amp; Q</label>
+        <input type="radio" name="t1mode" id="t1mode_scos" value="scos"><label for="t1mode_scos">Biết S &amp; cosφ</label>
+      </div>
+
+      <div id="t1sec_pcos" class="grid">
+        <div class="field">
+          <label for="t1_P">Công suất tác dụng P</label>
+          <div class="input-row"><input type="number" step="any" id="t1_P" value="1000"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t1_cos1">cosφ (0–1)</label>
+          <input type="number" step="any" min="0" max="1" id="t1_cos1" value="0.95">
+        </div>
+        <div class="field">
+          <label>Chiều</label>
+          <div class="seg">
+            <input type="radio" name="t1dir1" id="t1dir1_lag" value="lag" checked><label for="t1dir1_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t1dir1" id="t1dir1_lead" value="lead"><label for="t1dir1_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="t1sec_pq" class="grid hidden">
+        <div class="field">
+          <label for="t1_P2">Công suất tác dụng P</label>
+          <div class="input-row"><input type="number" step="any" id="t1_P2" value="1000"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t1_Q">Công suất phản kháng Q <span class="hint">(dương = phát/lag, âm = hấp thụ/lead)</span></label>
+          <div class="input-row"><input type="number" step="any" id="t1_Q" value="300"><span class="unit unit-q">kVAr</span></div>
+        </div>
+      </div>
+
+      <div id="t1sec_scos" class="grid hidden">
+        <div class="field">
+          <label for="t1_S">Công suất biểu kiến S</label>
+          <div class="input-row"><input type="number" step="any" id="t1_S" value="1050"><span class="unit unit-s">kVA</span></div>
+        </div>
+        <div class="field">
+          <label for="t1_cos2">cosφ (0–1)</label>
+          <input type="number" step="any" min="0" max="1" id="t1_cos2" value="0.95">
+        </div>
+        <div class="field">
+          <label>Chiều</label>
+          <div class="seg">
+            <input type="radio" name="t1dir2" id="t1dir2_lag" value="lag" checked><label for="t1dir2_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t1dir2" id="t1dir2_lead" value="lead"><label for="t1dir2_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="results">
+        <div class="result-tile"><div class="rlabel">P</div><div class="rvalue" id="t1_out_P">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q</div><div class="rvalue" id="t1_out_Q">—</div></div>
+        <div class="result-tile"><div class="rlabel">S</div><div class="rvalue" id="t1_out_S">—</div></div>
+        <div class="result-tile"><div class="rlabel">cosφ</div><div class="rvalue" id="t1_out_cos">—</div></div>
+        <div class="result-tile"><div class="rlabel">Chiều</div><div class="rvalue" id="t1_out_dir">—</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2 ============ -->
+  <section id="tab2" class="panel">
+    <div class="card">
+      <h2>Tính thuận: cosφ tại điểm đấu nối/mua bán EVN</h2>
+      <p class="subtle">Solar, tải nhà máy và tụ bù đấu chung thanh cái hạ áp, qua 1 MBA để ra điểm đấu nối EVN. Biết cosφ set ở inverter + tải + tụ bù → suy ra cosφ thực tế tại điểm mua bán với EVN.</p>
+
+      <h3>Solar (inverter)</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t2_Psolar">Công suất solar P<sub>solar</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t2_Psolar" value="2000"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t2_cossolar">cosφ đang set ở inverter</label>
+          <input type="number" step="any" min="0" max="1" id="t2_cossolar" value="1">
+        </div>
+        <div class="field">
+          <label>Chiều cosφ inverter</label>
+          <div class="seg">
+            <input type="radio" name="t2solardir" id="t2solardir_lag" value="lag" checked><label for="t2solardir_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t2solardir" id="t2solardir_lead" value="lead"><label for="t2solardir_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tải nhà máy</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t2_Ptai">Công suất tải P<sub>tải</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t2_Ptai" value="1500"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t2_costai">cosφ tải</label>
+          <input type="number" step="any" min="0" max="1" id="t2_costai" value="0.85">
+        </div>
+        <div class="field">
+          <label>Chiều Q của tải</label>
+          <div class="seg">
+            <input type="radio" name="t2taidir" id="t2taidir_lag" value="lag" checked><label for="t2taidir_lag">Hấp thụ Q (phổ biến)</label>
+            <input type="radio" name="t2taidir" id="t2taidir_lead" value="lead"><label for="t2taidir_lead">Phát Q (hiếm)</label>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tụ bù &amp; tổn hao P</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t2_Qcap">Tụ bù đang vận hành <span class="hint">(lắp phía hạ áp)</span></label>
+          <div class="input-row"><input type="number" step="any" id="t2_Qcap" value="250"><span class="unit unit-q">kVAr</span></div>
+        </div>
+        <div class="field">
+          <label for="t2_Ploss_pct">Tổn hao P qua MBA/cáp <span class="hint">(%, mặc định 0)</span></label>
+          <input type="number" step="any" id="t2_Ploss_pct" value="0">
+        </div>
+        <div class="field">
+          <label for="t2_threshold">Ngưỡng cosφ EVN yêu cầu</label>
+          <input type="number" step="any" min="0" max="1" id="t2_threshold" value="0.9">
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tổn hao Q trạm biến áp <span class="hint">(tính theo dòng RÒNG qua MBA, không phải theo S riêng của inverter)</span></h3>
+      <div class="seg" style="margin-bottom:12px;">
+        <input type="radio" name="t2lossmode" id="t2lossmode_manual" value="manual" checked><label for="t2lossmode_manual">Nhập tay</label>
+        <input type="radio" name="t2lossmode" id="t2lossmode_calc" value="calc"><label for="t2lossmode_calc">Tính từ thông số MBA</label>
+      </div>
+      <div id="t2sec_manual" class="grid">
+        <div class="field">
+          <label for="t2_Qmba_manual">Q tổn hao trạm BA + cáp</label>
+          <div class="input-row"><input type="number" step="any" id="t2_Qmba_manual" value="0"><span class="unit unit-q">kVAr</span></div>
+        </div>
+      </div>
+      <div id="t2sec_calc" class="grid hidden">
+        <div class="field">
+          <label for="t2_Sn">Công suất định mức MBA S<sub>n</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t2_Sn" value="2500"><span class="unit unit-s">kVA</span></div>
+        </div>
+        <div class="field"><label for="t2_Uk">Điện áp ngắn mạch U<sub>k</sub> (%)</label><input type="number" step="any" id="t2_Uk" value="6"></div>
+        <div class="field"><label for="t2_I0">Dòng không tải I<sub>0</sub> (%)</label><input type="number" step="any" id="t2_I0" value="0.8"></div>
+        <div class="field">
+          <label>Q<sub>MBA</sub> tính được</label>
+          <div class="rvalue" id="t2_qmba_calc_display" style="font-size:15px;">—</div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Kết quả trung gian (thanh cái hạ áp)</h3>
+      <div class="results">
+        <div class="result-tile"><div class="rlabel">Q<sub>solar</sub></div><div class="rvalue" id="t2_out_Qsolar">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q<sub>tải</sub></div><div class="rvalue" id="t2_out_Qtai">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q ròng (thanh cái LV)</div><div class="rvalue" id="t2_out_Qrong">—</div></div>
+        <div class="result-tile"><div class="rlabel">P ròng (thanh cái LV)</div><div class="rvalue" id="t2_out_Prong">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q<sub>MBA</sub> (tổn hao)</div><div class="rvalue" id="t2_out_Qmba">—</div></div>
+      </div>
+
+      <h3 style="margin-top:16px;">Kết quả tại điểm đấu nối EVN</h3>
+      <div class="results">
+        <div class="result-tile"><div class="rlabel">P tại EVN</div><div class="rvalue" id="t2_out_PEVN">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q tại EVN</div><div class="rvalue" id="t2_out_QEVN">—</div></div>
+        <div class="result-tile"><div class="rlabel">S tại EVN</div><div class="rvalue" id="t2_out_SEVN">—</div></div>
+        <div class="result-tile"><div class="rlabel">cosφ tại EVN</div><div class="rvalue" id="t2_out_cosEVN">—</div></div>
+        <div class="result-tile"><div class="rlabel">Chiều</div><div class="rvalue" id="t2_out_dirEVN">—</div></div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+        <span id="t2_flow_badge" class="badge">—</span>
+        <span id="t2_pass_badge" class="badge">—</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3 ============ -->
+  <section id="tab3" class="panel">
+    <div class="card">
+      <h2>Set cosφ inverter theo mục tiêu tại điểm đấu nối EVN</h2>
+      <p class="subtle">Biết tải nhà máy + cosφ mong muốn tại điểm mua bán EVN + khả năng tụ bù → tính cosφ cần set ở inverter. Dùng chung cho cả 2 trường hợp: tụ bù cố định, hoặc tụ bù có giới hạn max không đủ khi tải cao.</p>
+
+      <h3>Solar &amp; tải (đầu vào đã biết)</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t3_Psolar">Công suất solar hiện tại P<sub>solar</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t3_Psolar" value="2000"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t3_Ptai">Công suất tải P<sub>tải</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t3_Ptai" value="1500"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t3_costai">cosφ tải</label>
+          <input type="number" step="any" min="0" max="1" id="t3_costai" value="0.85">
+        </div>
+        <div class="field">
+          <label>Chiều Q của tải</label>
+          <div class="seg">
+            <input type="radio" name="t3taidir" id="t3taidir_lag" value="lag" checked><label for="t3taidir_lag">Hấp thụ Q (phổ biến)</label>
+            <input type="radio" name="t3taidir" id="t3taidir_lead" value="lead"><label for="t3taidir_lead">Phát Q (hiếm)</label>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Mục tiêu tại điểm đấu nối EVN</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t3_cospcc">cosφ mong muốn tại EVN</label>
+          <input type="number" step="any" min="0" max="1" id="t3_cospcc" value="0.95">
+        </div>
+        <div class="field">
+          <label>Chiều mong muốn tại EVN</label>
+          <div class="seg">
+            <input type="radio" name="t3pccdir" id="t3pccdir_lag" value="lag" checked><label for="t3pccdir_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t3pccdir" id="t3pccdir_lead" value="lead"><label for="t3pccdir_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="t3_Ploss_pct">Tổn hao P qua MBA/cáp <span class="hint">(%, mặc định 0)</span></label>
+          <input type="number" step="any" id="t3_Ploss_pct" value="0">
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tụ bù &amp; giới hạn inverter</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t3_Qcap">Tụ bù khả dụng</label>
+          <div class="input-row"><input type="number" step="any" id="t3_Qcap" value="250"><span class="unit unit-q">kVAr</span></div>
+          <div class="checkline"><input type="checkbox" id="t3_ismax"><label for="t3_ismax">Đây là giá trị MAX (tụ có thể không đủ khi tải cao)</label></div>
+        </div>
+        <div class="field">
+          <label for="t3_Sninv">Công suất định mức inverter S<sub>n</sub> <span class="hint">(để kiểm tra khả năng, bỏ trống nếu không cần)</span></label>
+          <div class="input-row"><input type="number" step="any" id="t3_Sninv" value="2100"><span class="unit unit-s">kVA</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tổn hao Q trạm biến áp <span class="hint">(theo dòng RÒNG qua MBA)</span></h3>
+      <div class="seg" style="margin-bottom:12px;">
+        <input type="radio" name="t3lossmode" id="t3lossmode_manual" value="manual" checked><label for="t3lossmode_manual">Nhập tay</label>
+        <input type="radio" name="t3lossmode" id="t3lossmode_calc" value="calc"><label for="t3lossmode_calc">Tính từ thông số MBA</label>
+      </div>
+      <div id="t3sec_manual" class="grid">
+        <div class="field">
+          <label for="t3_Qmba_manual">Q tổn hao trạm BA + cáp</label>
+          <div class="input-row"><input type="number" step="any" id="t3_Qmba_manual" value="0"><span class="unit unit-q">kVAr</span></div>
+        </div>
+      </div>
+      <div id="t3sec_calc" class="grid hidden">
+        <div class="field">
+          <label for="t3_Sn">Công suất định mức MBA S<sub>n</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t3_Sn" value="2500"><span class="unit unit-s">kVA</span></div>
+        </div>
+        <div class="field"><label for="t3_Uk">Điện áp ngắn mạch U<sub>k</sub> (%)</label><input type="number" step="any" id="t3_Uk" value="6"></div>
+        <div class="field"><label for="t3_I0">Dòng không tải I<sub>0</sub> (%)</label><input type="number" step="any" id="t3_I0" value="0.8"></div>
+        <div class="field">
+          <label>Q<sub>MBA</sub> tính được <span class="hint">(giải lặp theo S ròng)</span></label>
+          <div class="rvalue" id="t3_qmba_calc_display" style="font-size:15px;">—</div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Kết quả</h3>
+      <div class="results">
+        <div class="result-tile"><div class="rlabel">P ròng (thanh cái LV)</div><div class="rvalue" id="t3_out_Prong">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q mục tiêu tại EVN</div><div class="rvalue" id="t3_out_Qpcc_target">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q<sub>MBA</sub> (tổn hao)</div><div class="rvalue" id="t3_out_Qmba">—</div></div>
+        <div class="result-tile"><div class="rlabel">Q cần set ở inverter</div><div class="rvalue" id="t3_out_Qinv_req">—</div></div>
+        <div class="result-tile"><div class="rlabel">S cần thiết</div><div class="rvalue" id="t3_out_Sinv_req">—</div></div>
+        <div class="result-tile"><div class="rlabel">cosφ cần set ở inverter</div><div class="rvalue" id="t3_out_cosinv_req">—</div></div>
+        <div class="result-tile"><div class="rlabel">Chiều cần set</div><div class="rvalue" id="t3_out_dirinv_req">—</div></div>
+      </div>
+
+      <div id="t3_split_note" class="notebox info hidden"></div>
+      <div id="t3_warn" class="notebox warn hidden"></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 4 ============ -->
+  <section id="tab4" class="panel">
+    <div class="card">
+      <h2>Tính dung lượng tụ bù cần lắp đặt</h2>
+      <p class="subtle">Vì tải và solar là 2 biến độc lập (không tỉ lệ với nhau), nhập nhiều kịch bản vận hành thực tế (lấy từ SCADA/đo tại hiện trường) — công cụ tính Q tụ bù cần cho từng kịch bản và đề xuất dung lượng lắp đặt theo worst-case.</p>
+
+      <h3>Mục tiêu tại điểm đấu nối EVN (áp dụng cho mọi kịch bản)</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t4_cospcc">cosφ mong muốn tại EVN</label>
+          <input type="number" step="any" min="0" max="1" id="t4_cospcc" value="0.95">
+        </div>
+        <div class="field">
+          <label>Chiều mong muốn tại EVN</label>
+          <div class="seg">
+            <input type="radio" name="t4pccdir" id="t4pccdir_lag" value="lag" checked><label for="t4pccdir_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t4pccdir" id="t4pccdir_lead" value="lead"><label for="t4pccdir_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tổn hao Q trạm biến áp <span class="hint">(theo dòng RÒNG qua MBA)</span></h3>
+      <div class="seg" style="margin-bottom:12px;">
+        <input type="radio" name="t4lossmode" id="t4lossmode_manual" value="manual" checked><label for="t4lossmode_manual">Nhập tay (mỗi kịch bản)</label>
+        <input type="radio" name="t4lossmode" id="t4lossmode_calc" value="calc"><label for="t4lossmode_calc">Tính từ thông số MBA (chung)</label>
+      </div>
+      <div id="t4sec_calc" class="grid hidden">
+        <div class="field">
+          <label for="t4_Sn">Công suất định mức MBA S<sub>n</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t4_Sn" value="2500"><span class="unit unit-s">kVA</span></div>
+        </div>
+        <div class="field"><label for="t4_Uk">Điện áp ngắn mạch U<sub>k</sub> (%)</label><input type="number" step="any" id="t4_Uk" value="6"></div>
+        <div class="field"><label for="t4_I0">Dòng không tải I<sub>0</sub> (%)</label><input type="number" step="any" id="t4_I0" value="0.8"></div>
+      </div>
+
+      <h3 style="margin-top:16px;">Kịch bản vận hành</h3>
+      <div id="t4_scenarios"></div>
+      <button type="button" class="btn-add" id="t4_add_btn">+ Thêm kịch bản</button>
+
+      <div class="notebox info" style="margin-top:16px;">
+        Đề xuất chọn tụ bù lắp đặt (worst-case qua các kịch bản): <b><span id="t4_recommend">—</span></b>
+      </div>
+
+      <div class="chart-container">
+        <div id="t4_chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 6 ============ -->
+  <section id="tab6" class="panel">
+    <div class="card">
+      <h2>Tìm P_solar tối đa khi cosφ inverter cố định</h2>
+      <p class="subtle">Dùng khi cosφ inverter đã CỐ ĐỊNH (không tự set theo mục tiêu), cần tìm P_solar lớn nhất mà cosφ tại điểm đấu nối trung thế vẫn giữ trên ngưỡng yêu cầu. Bỏ qua tổn hao Q trạm biến áp (đơn giản hóa). Tải nhà máy luôn hấp thụ Q.</p>
+
+      <h3>Cosφ inverter (cố định)</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t6_cosinv">cosφ inverter</label>
+          <input type="number" step="any" min="0" max="1" id="t6_cosinv" value="0.98">
+        </div>
+        <div class="field">
+          <label>Chiều cosφ inverter</label>
+          <div class="seg">
+            <input type="radio" name="t6invdir" id="t6invdir_lag" value="lag" checked><label for="t6invdir_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t6invdir" id="t6invdir_lead" value="lead"><label for="t6invdir_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tải nhà máy (không có solar) — tự nhập</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t6_Ptai">Công suất tải P<sub>tải</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t6_Ptai" value="1500"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t6_costai">cosφ tải <span class="hint">(luôn hấp thụ Q)</span></label>
+          <input type="number" step="any" min="0" max="1" id="t6_costai" value="0.85">
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tụ bù &amp; ngưỡng yêu cầu</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t6_Qcap">Tụ bù khả dụng</label>
+          <div class="input-row"><input type="number" step="any" id="t6_Qcap" value="250"><span class="unit unit-q">kVAr</span></div>
+        </div>
+        <div class="field">
+          <label for="t6_threshold">Ngưỡng cosφ yêu cầu tại điểm đấu nối trung thế</label>
+          <input type="number" step="any" min="0" max="1" id="t6_threshold" value="0.92">
+        </div>
+        <div class="field">
+          <label for="t6_Pscan">Phạm vi quét P<sub>solar</sub> (0 → giá trị này)</label>
+          <div class="input-row"><input type="number" step="any" id="t6_Pscan" value="4000"><span class="unit unit-p">kW</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Kết quả</h3>
+      <div id="t6_recommend" class="notebox info"></div>
+      <div id="t6_summary" style="margin-top:10px;"></div>
+
+      <div class="chart-container">
+        <div id="t6_chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 7 ============ -->
+  <section id="tab7" class="panel">
+    <div class="card">
+      <h2>Tụ bù tự động (APFC): ảnh hưởng vị trí CT so với điểm hòa solar</h2>
+      <p class="subtle">Nếu tụ bù được điều khiển tự động bởi relay theo dõi cosφ tại 1 CT, vị trí CT đó so với điểm hòa solar quyết định relay có "thấy" đúng Q_tải hay bị solar che. Tab này tính Q_cap ĐỘNG theo P_solar (thay vì hằng số nhập tay như Tab "Dung lượng tụ bù cần lắp"), theo đúng cơ chế relay tự vận hành — bỏ qua tổn hao Q_MBA và làm tròn theo nấc tụ (coi liên tục).</p>
+
+      <h3>Vị trí CT tụ bù</h3>
+      <div class="seg seg-vertical" style="margin-bottom:8px;">
+        <input type="radio" name="t7ctpos" id="t7ctpos_before" value="before" checked><label for="t7ctpos_before">CT trước solar (bị solar che — phổ biến khi hết chỗ đấu nối)</label>
+        <input type="radio" name="t7ctpos" id="t7ctpos_after" value="after"><label for="t7ctpos_after">CT sau solar (đúng thiết kế, không bị che)</label>
+      </div>
+
+      <h3 style="margin-top:16px;">Cosφ inverter (cố định)</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t7_cosinv">cosφ inverter</label>
+          <input type="number" step="any" min="0" max="1" id="t7_cosinv" value="1">
+        </div>
+        <div class="field">
+          <label>Chiều cosφ inverter</label>
+          <div class="seg">
+            <input type="radio" name="t7invdir" id="t7invdir_lag" value="lag" checked><label for="t7invdir_lag">Chậm sau (Q+)</label>
+            <input type="radio" name="t7invdir" id="t7invdir_lead" value="lead"><label for="t7invdir_lead">Vượt trước (Q−)</label>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Tải nhà máy (không có solar) — tự nhập</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t7_Ptai">Công suất tải P<sub>tải</sub></label>
+          <div class="input-row"><input type="number" step="any" id="t7_Ptai" value="1500"><span class="unit unit-p">kW</span></div>
+        </div>
+        <div class="field">
+          <label for="t7_costai">cosφ tải <span class="hint">(luôn hấp thụ Q)</span></label>
+          <input type="number" step="any" min="0" max="1" id="t7_costai" value="0.85">
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Relay tụ bù (APFC) — mục tiêu tự vận hành</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t7_cosrelay">cosφ mục tiêu của relay APFC <span class="hint">(khác với ngưỡng EVN bên dưới)</span></label>
+          <input type="number" step="any" min="0" max="1" id="t7_cosrelay" value="0.95">
+        </div>
+        <div class="field">
+          <label for="t7_Qcapmax">Tổng dung lượng tụ bù lắp đặt (giới hạn max)</label>
+          <div class="input-row"><input type="number" step="any" id="t7_Qcapmax" value="600"><span class="unit unit-q">kVAr</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Ngưỡng tại điểm đấu nối EVN &amp; phạm vi quét</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="t7_threshold">Ngưỡng cosφ yêu cầu tại điểm đấu nối EVN</label>
+          <input type="number" step="any" min="0" max="1" id="t7_threshold" value="0.92">
+        </div>
+        <div class="field">
+          <label for="t7_Pscan">Phạm vi quét P<sub>solar</sub> (0 → giá trị này)</label>
+          <div class="input-row"><input type="number" step="any" id="t7_Pscan" value="4000"><span class="unit unit-p">kW</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:16px;">Kết quả</h3>
+      <div id="t7_recommend" class="notebox info"></div>
+      <div id="t7_summary" style="margin-top:10px;"></div>
+
+      <div class="chart-container">
+        <div id="t7_chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 5 ============ -->
+  <section id="tab5" class="panel">
+    <div class="card">
+      <h2>Sơ đồ đấu nối, quy ước dấu &amp; công thức</h2>
+      <p class="subtle">Đọc tab này trước khi tin dùng kết quả — mọi giả định được ghi rõ ở đây để audit lại nguồn gốc số liệu.</p>
+
+      <h3>Sơ đồ đấu nối (solar C&amp;I sau công tơ — behind-the-meter)</h3>
+      <div class="diagram">Lưới EVN 22kV
+      │
+   [Điểm đấu nối EVN]   ← đo đếm mua bán điện tại đây (phía trung áp MBA)
+      │
+   MBA nhà máy (1 máy, hạ áp: 22kV → LV — cấp điện cho TOÀN NHÀ MÁY,
+      │                          không phải MBA tăng áp riêng cho solar)
+     ACB
+      │
+   ── CT tụ bù ── CT tải (đo dòng mua/bán với lưới, feed vào bộ điều
+      │             khiển Zero Export của solar) ──
+   Thanh cái hạ áp
+      │
+   ┌──┴──────────────┐
+ Tải nhà máy      Solar (inverter đấu thẳng vào thanh cái,
+                    cùng cấp điện áp với tải và tụ bù)</div>
+      <p class="subtle">Vì vậy chỉ có <b>2 điểm cosφ</b> cần phân biệt: (1) cosφ set ở inverter, và (2) cosφ tại điểm đấu nối/mua bán EVN (sau MBA, đã gồm ảnh hưởng tải + tụ bù). Không tách "cosφ tại điểm đấu nối inverter" riêng vì inverter đấu thẳng vào thanh cái hạ áp — tổn hao dây dẫn LV giữa inverter và thanh cái coi như không đáng kể.</p>
+
+      <h3>Zero Export (Ze)</h3>
+      <p class="subtle" style="margin-top:0;">CT tải đo dòng mua/bán với lưới; bộ điều khiển dùng giá trị này để ra lệnh tăng/giảm P phát của inverter, mục tiêu đưa lượng điện mua từ lưới về gần 0 mà KHÔNG xuất ngược lên lưới. Nếu tải lớn hơn khả năng phát, inverter cứ phát hết khả năng. Đây là vòng điều khiển <b>P</b>, không điều khiển Q/cosφ. Công cụ không tự mô phỏng logic curtail này — <code>P_solar</code> nhập vào là giá trị thực tế tại thời điểm tính (đã phản ánh Ze nếu có).</p>
+
+      <h3>Quy ước dấu</h3>
+      <ul class="ref">
+        <li><b>Q &gt; 0</b>: <b>phát/bơm</b> reactive power vào hệ thống → cosφ <b>"chậm sau" (lagging, quá kích thích)</b> → có xu hướng nâng điện áp.</li>
+        <li><b>Q &lt; 0</b>: <b>hấp thụ</b> reactive power từ hệ thống → cosφ <b>"vượt trước" (leading, thiếu kích thích)</b> → có xu hướng hạ điện áp.</li>
+        <li><code>tanφ = Q/|P|</code>, <code>S = √(P² + Q²)</code>, <code>cosφ = |P|/S</code> — dùng |P| vì P ròng tại thanh cái/điểm EVN có thể ÂM khi nhà máy đang mua điện từ lưới.</li>
+        <li>Riêng <b>tải nhà máy</b>: dùng nhãn theo góc nhìn tiêu thụ thay vì lag/lead để tránh nhầm — <b>"Hấp thụ Q" (tải cảm, cosφ trễ — phổ biến)</b> / <b>"Phát Q" (tải dung, cosφ vượt — hiếm)</b>. Về công thức, "Hấp thụ Q" tương đương giá trị dương bị TRỪ khỏi cân bằng; "Phát Q" tương đương giá trị bị trừ là ÂM, tức thực chất được CỘNG.</li>
+        <li>Khi <b>P tại EVN &lt; 0</b> (nhà máy đang MUA điện từ lưới tại thời điểm tính), công cụ hiển thị badge "Đang MUA điện" — nhãn chậm sau/vượt trước lúc này cần hiểu theo góc nhìn tiêu thụ, ngược với góc nhìn máy phát khi đang xuất điện.</li>
+      </ul>
+
+      <h3>Công thức cân bằng Q (thanh cái hạ áp → điểm đấu nối EVN)</h3>
+      <div class="formula">Q_solar   = signedQ(P_solar, cosφ_solar, chiều_solar)
+Q_tải     = signedQ(P_tải, cosφ_tải, chiều_tải)     // dương = tải hấp thụ (phổ biến)
+
+Q_ròng_LV = Q_solar − Q_tải + Q_cap     // Q ròng tại thanh cái hạ áp, trước MBA
+P_ròng_LV = P_solar − P_tải             // có thể ÂM (đang mua điện)
+
+S_ròng_LV = √(P_ròng_LV² + Q_ròng_LV²)   ← DÙNG giá trị này để tính tải MBA,
+                                              KHÔNG dùng S riêng của inverter
+
+Q_MBA = Q0 + Qk × (S_ròng_LV / Sn)²
+Q_EVN = Q_ròng_LV − Q_MBA
+P_EVN ≈ P_ròng_LV × (1 − %tổn_hao_P/100)
+cosφ_EVN = |P_EVN| / √(P_EVN² + Q_EVN²)</div>
+      <p class="subtle">Q_MBA luôn dương, luôn bị TRỪ (MBA luôn là tải cảm, luôn hấp thụ Q bất kể chiều P qua nó). Q_cap luôn dương, luôn được CỘNG vào Q_ròng_LV (không cộng trực tiếp vào Q_EVN, vì tụ bù nằm phía hạ áp, trước MBA).</p>
+
+      <h3>Tính Q_MBA từ thông số nameplate (chế độ "tính từ MBA")</h3>
+      <p class="subtle" style="margin-top:0;">Xấp xỉ kỹ thuật điện tiêu chuẩn: bỏ qua điện trở R, coi dòng không tải gần như thuần cảm.</p>
+      <div class="formula">Q0 = I0%/100 × Sn        (Q từ hóa không tải — hằng số theo tải)
+Qk = Uk%/100 × Sn        (Q rò tại đầy tải 100% Sn)
+Q_MBA = Q0 + Qk × (S_ròng_LV / Sn)²</div>
+
+      <h3>Vòng lặp giải ngược (Tab 3, Tab 4 — chế độ "tính từ MBA")</h3>
+      <p class="subtle" style="margin-top:0;">Khi đi ngược (biết Q_EVN mục tiêu, cần suy ra Q_ròng_LV), Q_MBA phụ thuộc S_ròng_LV mà S_ròng_LV lại phụ thuộc chính Q_ròng_LV đang tìm. Giải bằng lặp điểm cố định (hội tụ nhanh, ~15-25 vòng, vì Q_MBA thường nhỏ so với Q):</p>
+      <div class="formula">Q_ròng_LV = Q_EVN_target + Q0     (khởi tạo)
+lặp N lần:
+  S_ròng_LV = √(P_ròng_LV² + Q_ròng_LV²)
+  Q_MBA     = Q0 + Qk × (S_ròng_LV/Sn)²
+  Q_ròng_LV = Q_EVN_target + Q_MBA</div>
+      <p class="subtle">Chế độ "nhập tay" Q_MBA (giá trị cố định) không cần lặp — giải trực tiếp: <code>Q_ròng_LV = Q_EVN_target + Q_MBA</code>.</p>
+
+      <h3>Công thức đảo — Tab 3 (set cosφ inverter theo mục tiêu EVN)</h3>
+      <div class="formula">Q_inv_required = Q_ròng_LV_target + Q_tải − Q_cap
+cosφ_inv_required = P_solar / √(P_solar² + Q_inv_required²)</div>
+      <p class="subtle">Kịch bản "tụ bù MAX không đủ": dùng Q_cap = Q_cap_max — phần thiếu hụt tự động dồn sang Q_inv_required. Kiểm tra <code>|Q_inv_required| ≤ Q_max_inv = √(Sn_inv² − P_solar²)</code> — nếu vượt, cảnh báo không đạt mục tiêu và tính cosφ_EVN thực tế đạt được khi inverter chạy hết khả năng.</p>
+
+      <h3>Công thức đảo — Tab 4 (dung lượng tụ bù, theo kịch bản)</h3>
+      <div class="formula">Q_cap_required = Q_ròng_LV_target − Q_solar + Q_tải</div>
+      <p class="subtle">Mỗi kịch bản nhập P_solar, cosφ_solar, P_tải, cosφ_tải riêng (từ SCADA/đo thực tế — KHÔNG suy diễn theo %tải vì tải và solar là 2 biến độc lập) → chọn dung lượng tụ bù lắp đặt = giá trị lớn nhất (worst-case) trong các kịch bản.</p>
+
+      <h3>Giới hạn của công cụ</h3>
+      <ul class="ref">
+        <li>Chưa mô hình nhiều trạm biến áp / nhiều điểm đấu nối EVN trong 1 nhà máy.</li>
+        <li>Chưa hỗ trợ đường cong Q(V) hoặc Q(P) theo grid code động — chỉ tính theo cosφ cố định tại một thời điểm/kịch bản.</li>
+        <li>Không tự mô phỏng logic curtail của Zero Export — P_solar là giá trị người dùng tự nhập.</li>
+        <li>Công cụ không lưu trữ dữ liệu — chỉ tính toán tức thời trên trình duyệt.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="appfoot">Công cụ nội bộ O&amp;M — mọi công thức tham chiếu tại tab "Sơ đồ, quy ước &amp; công thức". Không kết nối internet, không gửi dữ liệu ra ngoài.</footer>
+</div>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+
+  function num(id){
+    const el = $(id);
+    if(!el) return 0;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  }
+  function radioVal(name){
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  }
+  function fmt(x, d){
+    if(d === undefined) d = 2;
+    if(x === null || x === undefined || !isFinite(x)) return '—';
+    return x.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+  }
+  function unitQLabel(){ return $('unitSelect').value === 'kW' ? 'kVAr' : 'MVAr'; }
+  function unitPLabel(){ return $('unitSelect').value; }
+  function dirBadge(dir){
+    return dir === 'lag'
+      ? '<span class="badge badge-lag">Chậm sau (lagging)</span>'
+      : '<span class="badge badge-lead">Vượt trước (leading)</span>';
+  }
+  function dirText(dir){ return dir === 'lag' ? 'chậm sau' : 'vượt trước'; }
+
+  // magnitude of P used (P can be negative when net-importing) -> Q signed by chosen direction
+  function signedQ(P, cosphi, dir){
+    const c = Math.min(Math.max(cosphi, 0.0001), 1);
+    const phi = Math.acos(c);
+    let Q = Math.abs(P) * Math.tan(phi);
+    if(dir === 'lead') Q = -Q;
+    return Q;
+  }
+  // P,Q -> {cosphi, dir, S}
+  function fromPQ(P, Q){
+    const S = Math.hypot(P, Q);
+    if(S === 0) return {cosphi:1, dir:'lag', S:0};
+    const cosphi = Math.abs(P) / S;
+    const dir = Q >= 0 ? 'lag' : 'lead';
+    return {cosphi, dir, S};
+  }
+  function transformerQ(Sn, Uk, I0, Sload){
+    if(!(Sn > 0)) return 0;
+    const Q0 = I0/100 * Sn;
+    const Qk = Uk/100 * Sn;
+    return Q0 + Qk * Math.pow(Sload / Sn, 2);
+  }
+  // Solve Q_rong_LV such that Q_rong_LV - Q_MBA(S(P_rong_fixed,Q_rong_LV)) = Q_target_after_loss
+  function solveQRongLVWithMba(P_rong_fixed, Q_target_after_loss, Q0, Qk, Sn){
+    if(!(Sn > 0)) return {Qrong: Q_target_after_loss, Qmba: 0};
+    let Qrong = Q_target_after_loss + Q0;
+    let Qmba = Q0;
+    for(let i = 0; i < 25; i++){
+      const S = Math.hypot(P_rong_fixed, Qrong);
+      Qmba = Q0 + Qk * Math.pow(S / Sn, 2);
+      Qrong = Q_target_after_loss + Qmba;
+    }
+    return {Qrong, Qmba};
+  }
+
+  function updateUnits(){
+    const u = $('unitSelect').value;
+    const p = u, q = (u === 'kW') ? 'kVAr' : 'MVAr', s = (u === 'kW') ? 'kVA' : 'MVA';
+    document.querySelectorAll('.unit-p').forEach(e => e.textContent = p);
+    document.querySelectorAll('.unit-q').forEach(e => e.textContent = q);
+    document.querySelectorAll('.unit-s').forEach(e => e.textContent = s);
+  }
+
+  function syncVisibility(){
+    const t1m = radioVal('t1mode');
+    ['pcos','pq','scos'].forEach(m => $('t1sec_' + m).classList.toggle('hidden', m !== t1m));
+
+    const t2l = radioVal('t2lossmode');
+    $('t2sec_manual').classList.toggle('hidden', t2l !== 'manual');
+    $('t2sec_calc').classList.toggle('hidden', t2l !== 'calc');
+
+    const t3l = radioVal('t3lossmode');
+    $('t3sec_manual').classList.toggle('hidden', t3l !== 'manual');
+    $('t3sec_calc').classList.toggle('hidden', t3l !== 'calc');
+
+    const t4l = radioVal('t4lossmode');
+    $('t4sec_calc').classList.toggle('hidden', t4l !== 'calc');
+    document.querySelectorAll('.t4-manual-q').forEach(el => el.classList.toggle('hidden', t4l !== 'manual'));
+  }
+
+  function t1Recalc(){
+    const mode = radioVal('t1mode');
+    let P, Q, S, cosphi, dir;
+    if(mode === 'pcos'){
+      P = num('t1_P'); const c = num('t1_cos1'); dir = radioVal('t1dir1');
+      Q = signedQ(P, c, dir); S = Math.hypot(P, Q); cosphi = c;
+    } else if(mode === 'pq'){
+      P = num('t1_P2'); Q = num('t1_Q');
+      const r = fromPQ(P, Q); cosphi = r.cosphi; dir = r.dir; S = r.S;
+    } else {
+      S = num('t1_S'); const c = num('t1_cos2'); dir = radioVal('t1dir2');
+      cosphi = c; P = S * c;
+      const q2 = Math.max(S*S - P*P, 0);
+      Q = Math.sqrt(q2);
+      if(dir === 'lead') Q = -Q;
+    }
+    $('t1_out_P').innerHTML = fmt(P) + ' <span class="u">' + unitPLabel() + '</span>';
+    $('t1_out_Q').innerHTML = fmt(Q) + ' <span class="u">' + unitQLabel() + '</span>';
+    $('t1_out_S').innerHTML = fmt(S) + ' <span class="u">' + (unitPLabel()==='kW'?'kVA':'MVA') + '</span>';
+    $('t1_out_cos').textContent = fmt(cosphi, 4);
+    $('t1_out_dir').innerHTML = dirBadge(dir);
+  }
+
+  function t2Recalc(){
+    const Psolar = num('t2_Psolar');
+    const cossolar = num('t2_cossolar'); const dirsolar = radioVal('t2solardir');
+    const Qsolar = signedQ(Psolar, cossolar, dirsolar);
+
+    const Ptai = num('t2_Ptai');
+    const costai = num('t2_costai'); const dirtai = radioVal('t2taidir');
+    const Qtai = signedQ(Ptai, costai, dirtai);
+
+    const Qcap = num('t2_Qcap');
+    const Qrong = Qsolar - Qtai + Qcap;
+    const Prong = Psolar - Ptai;
+    const Srong = Math.hypot(Prong, Qrong);
+
+    const lossMode = radioVal('t2lossmode');
+    let Qmba = 0;
+    if(lossMode === 'manual'){
+      Qmba = num('t2_Qmba_manual');
+    } else {
+      const Sn = num('t2_Sn'), Uk = num('t2_Uk'), I0 = num('t2_I0');
+      Qmba = transformerQ(Sn, Uk, I0, Srong);
+      $('t2_qmba_calc_display').textContent = fmt(Qmba) + ' ' + unitQLabel();
+    }
+
+    const Ploss = num('t2_Ploss_pct');
+    const P_EVN = Prong * (1 - Ploss/100);
+    const Q_EVN = Qrong - Qmba;
+    const S_EVN = Math.hypot(P_EVN, Q_EVN);
+    const r = fromPQ(P_EVN, Q_EVN);
+
+    $('t2_out_Qsolar').textContent = fmt(Qsolar) + ' ' + unitQLabel();
+    $('t2_out_Qtai').textContent = fmt(Qtai) + ' ' + unitQLabel();
+    $('t2_out_Qrong').textContent = fmt(Qrong) + ' ' + unitQLabel();
+    $('t2_out_Prong').textContent = fmt(Prong) + ' ' + unitPLabel();
+    $('t2_out_Qmba').textContent = fmt(Qmba) + ' ' + unitQLabel();
+    $('t2_out_PEVN').textContent = fmt(P_EVN) + ' ' + unitPLabel();
+    $('t2_out_QEVN').textContent = fmt(Q_EVN) + ' ' + unitQLabel();
+    $('t2_out_SEVN').textContent = fmt(S_EVN) + ' ' + (unitPLabel()==='kW'?'kVA':'MVA');
+    $('t2_out_cosEVN').textContent = fmt(r.cosphi, 4);
+    $('t2_out_dirEVN').innerHTML = dirBadge(r.dir);
+
+    const flowBadge = $('t2_flow_badge');
+    if(P_EVN >= 0){
+      flowBadge.textContent = 'Đang XUẤT điện lên lưới';
+      flowBadge.className = 'badge badge-flow-export';
+    } else {
+      flowBadge.textContent = 'Đang MUA điện từ lưới';
+      flowBadge.className = 'badge badge-flow-import';
+    }
+
+    const threshold = num('t2_threshold') || 0.9;
+    const pass = r.cosphi >= threshold;
+    const passBadge = $('t2_pass_badge');
+    passBadge.textContent = pass
+      ? ('Đạt yêu cầu (≥ ' + fmt(threshold,3) + ')')
+      : ('KHÔNG đạt yêu cầu (< ' + fmt(threshold,3) + ')');
+    passBadge.className = 'badge ' + (pass ? 'badge-good' : 'badge-critical');
+  }
+
+  function t3Recalc(){
+    const Psolar = num('t3_Psolar');
+    const Ptai = num('t3_Ptai');
+    const costai = num('t3_costai'); const dirtai = radioVal('t3taidir');
+    const Qtai = signedQ(Ptai, costai, dirtai);
+
+    const Prong = Psolar - Ptai;
+    const Ploss = num('t3_Ploss_pct');
+    const P_EVN = Prong * (1 - Ploss/100);
+
+    const cos_target = num('t3_cospcc'); const dir_target = radioVal('t3pccdir');
+    const Q_EVN_target = signedQ(P_EVN, cos_target, dir_target);
+
+    const Qcap = num('t3_Qcap');
+    const lossMode = radioVal('t3lossmode');
+    let Qrong_target, Qmba;
+    let Sn = 0, Uk = 0, I0 = 0;
+    if(lossMode === 'manual'){
+      Qmba = num('t3_Qmba_manual');
+      Qrong_target = Q_EVN_target + Qmba;
+    } else {
+      Sn = num('t3_Sn'); Uk = num('t3_Uk'); I0 = num('t3_I0');
+      const Q0 = Sn>0 ? I0/100*Sn : 0;
+      const Qk = Sn>0 ? Uk/100*Sn : 0;
+      const r = solveQRongLVWithMba(Prong, Q_EVN_target, Q0, Qk, Sn);
+      Qrong_target = r.Qrong; Qmba = r.Qmba;
+      $('t3_qmba_calc_display').textContent = fmt(Qmba) + ' ' + unitQLabel();
+    }
+
+    const Q_inv_req = Qrong_target + Qtai - Qcap;
+    const S_inv_req = Math.hypot(Psolar, Q_inv_req);
+    const r2 = fromPQ(Psolar, Q_inv_req);
+
+    $('t3_out_Prong').textContent = fmt(Prong) + ' ' + unitPLabel();
+    $('t3_out_Qpcc_target').textContent = fmt(Q_EVN_target) + ' ' + unitQLabel();
+    $('t3_out_Qmba').textContent = fmt(Qmba) + ' ' + unitQLabel();
+    $('t3_out_Qinv_req').textContent = fmt(Q_inv_req) + ' ' + unitQLabel();
+    $('t3_out_Sinv_req').textContent = fmt(S_inv_req) + ' ' + (unitPLabel()==='kW'?'kVA':'MVA');
+    $('t3_out_cosinv_req').textContent = fmt(r2.cosphi, 4);
+    $('t3_out_dirinv_req').innerHTML = dirBadge(r2.dir);
+
+    const isMax = $('t3_ismax').checked;
+    const note = $('t3_split_note');
+    if(isMax){
+      note.classList.remove('hidden');
+      note.textContent = 'Tụ bù đang vận hành ở giá trị MAX = ' + fmt(Qcap) + ' ' + unitQLabel() +
+        '. Phần còn lại inverter phải tự bù: ' + fmt(Q_inv_req) + ' ' + unitQLabel() +
+        ' (cosφ set = ' + fmt(r2.cosphi,4) + ', ' + dirText(r2.dir) + ').';
+    } else {
+      note.classList.add('hidden');
+    }
+
+    const Sn_inv = num('t3_Sninv');
+    const warnBox = $('t3_warn');
+    if(Sn_inv > 0 && Sn_inv > Psolar){
+      const Q_max_inv = Math.sqrt(Sn_inv*Sn_inv - Psolar*Psolar);
+      if(Math.abs(Q_inv_req) > Q_max_inv){
+        const sign = Q_inv_req >= 0 ? 1 : -1;
+        const Q_inv_actual = sign * Q_max_inv;
+        const Q_rong_actual = Q_inv_actual - Qtai + Qcap;
+        let Q_mba_actual;
+        if(lossMode === 'manual'){
+          Q_mba_actual = Qmba;
+        } else {
+          Q_mba_actual = transformerQ(Sn, Uk, I0, Math.hypot(Prong, Q_rong_actual));
+        }
+        const Q_EVN_actual = Q_rong_actual - Q_mba_actual;
+        const ra = fromPQ(P_EVN, Q_EVN_actual);
+        warnBox.classList.remove('hidden');
+        warnBox.innerHTML = '<b>Cảnh báo:</b> Inverter không đủ khả năng (Q khả dụng tối đa ±' + fmt(Q_max_inv) + ' ' + unitQLabel() +
+          ' tại mức P này). cosφ tại điểm đấu nối EVN thực tế chỉ đạt <b>' + fmt(ra.cosphi,4) + ' (' + dirText(ra.dir) + ')</b>, thiếu ' +
+          fmt(Math.abs(Q_inv_req) - Q_max_inv) + ' ' + unitQLabel() + ' so với mục tiêu.';
+      } else {
+        warnBox.classList.add('hidden');
+      }
+    } else {
+      warnBox.classList.add('hidden');
+    }
+  }
+
+  // ---- Tab 4: dynamic scenarios ----
+  let t4Counter = 0;
+  function addScenario(name, Psolar, Ptai, costai){
+    const id = 't4row_' + (t4Counter++);
+    const wrap = document.createElement('div');
+    wrap.className = 'card scenario-card';
+    wrap.dataset.rowid = id;
+    wrap.innerHTML =
+      '<div class="scenario-head">' +
+        '<input type="text" class="scenario-name" value="' + name + '" placeholder="Tên kịch bản">' +
+        '<button type="button" class="btn-remove" data-remove="' + id + '">Xóa kịch bản</button>' +
+      '</div>' +
+      '<div class="grid">' +
+        '<div class="field"><label>P<sub>solar</sub></label>' +
+          '<div class="input-row"><input type="number" step="any" class="t4-Psolar" value="' + Psolar + '"><span class="unit unit-p">kW</span></div></div>' +
+        '<div class="field"><label>cosφ<sub>solar</sub></label>' +
+          '<input type="number" step="any" min="0" max="1" class="t4-cossolar" value="1"></div>' +
+        '<div class="field"><label>Chiều solar</label>' +
+          '<div class="seg">' +
+            '<input type="radio" name="' + id + '_solardir" id="' + id + '_solardir_lag" value="lag" checked><label for="' + id + '_solardir_lag">Chậm sau</label>' +
+            '<input type="radio" name="' + id + '_solardir" id="' + id + '_solardir_lead" value="lead"><label for="' + id + '_solardir_lead">Vượt trước</label>' +
+          '</div></div>' +
+        '<div class="field"><label>P<sub>tải</sub></label>' +
+          '<div class="input-row"><input type="number" step="any" class="t4-Ptai" value="' + Ptai + '"><span class="unit unit-p">kW</span></div></div>' +
+        '<div class="field"><label>cosφ<sub>tải</sub></label>' +
+          '<input type="number" step="any" min="0" max="1" class="t4-costai" value="' + costai + '"></div>' +
+        '<div class="field"><label>Chiều Q của tải</label>' +
+          '<div class="seg">' +
+            '<input type="radio" name="' + id + '_taidir" id="' + id + '_taidir_lag" value="lag" checked><label for="' + id + '_taidir_lag">Hấp thụ Q</label>' +
+            '<input type="radio" name="' + id + '_taidir" id="' + id + '_taidir_lead" value="lead"><label for="' + id + '_taidir_lead">Phát Q</label>' +
+          '</div></div>' +
+        '<div class="field t4-manual-q hidden"><label>Q<sub>MBA</sub> tại kịch bản này (nhập tay)</label>' +
+          '<div class="input-row"><input type="number" step="any" class="t4-Qmba-manual" value="0"><span class="unit unit-q">kVAr</span></div></div>' +
+      '</div>' +
+      '<div class="results" style="margin-top:10px;">' +
+        '<div class="result-tile"><div class="rlabel">Q ròng (thanh cái LV)</div><div class="rvalue t4-out-Qrong">—</div></div>' +
+        '<div class="result-tile"><div class="rlabel">Q<sub>MBA</sub></div><div class="rvalue t4-out-Qmba">—</div></div>' +
+        '<div class="result-tile"><div class="rlabel">Q tụ bù cần</div><div class="rvalue t4-out-Qcap">—</div></div>' +
+      '</div>';
+    $('t4_scenarios').appendChild(wrap);
+  }
+
+  function seedScenarios(){
+    addScenario('Trưa nắng, tải thấp', 2500, 800, 0.85);
+    addScenario('Trưa nắng, tải cao', 2500, 2200, 0.85);
+    addScenario('Sáng sớm ít nắng, tải cao', 500, 2200, 0.85);
+  }
+
+  function t4Recalc(){
+    const cos_pcc = num('t4_cospcc'); const dir_pcc = radioVal('t4pccdir');
+    const lossMode = radioVal('t4lossmode');
+    const Sn = num('t4_Sn'), Uk = num('t4_Uk'), I0 = num('t4_I0');
+    const Q0 = (Sn>0) ? I0/100*Sn : 0;
+    const Qk = (Sn>0) ? Uk/100*Sn : 0;
+
+    const cards = document.querySelectorAll('#t4_scenarios .scenario-card');
+    const results = [];
+    cards.forEach(card => {
+      const name = card.querySelector('.scenario-name').value || 'Kịch bản';
+      const Psolar = parseFloat(card.querySelector('.t4-Psolar').value) || 0;
+      const cossolar = parseFloat(card.querySelector('.t4-cossolar').value) || 1;
+      const dirsolarEl = card.querySelector('input[type=radio][name$="_solardir"]:checked');
+      const dirsolar = dirsolarEl ? dirsolarEl.value : 'lag';
+      const Ptai = parseFloat(card.querySelector('.t4-Ptai').value) || 0;
+      const costai = parseFloat(card.querySelector('.t4-costai').value) || 1;
+      const dirtaiEl = card.querySelector('input[type=radio][name$="_taidir"]:checked');
+      const dirtai = dirtaiEl ? dirtaiEl.value : 'lag';
+
+      const Qsolar = signedQ(Psolar, cossolar, dirsolar);
+      const Qtai = signedQ(Ptai, costai, dirtai);
+      const P_rong = Psolar - Ptai;
+      const Q_evn_target = signedQ(P_rong, cos_pcc, dir_pcc);
+
+      let Q_rong_target, Q_mba_used;
+      if(lossMode === 'manual'){
+        Q_mba_used = parseFloat(card.querySelector('.t4-Qmba-manual').value) || 0;
+        Q_rong_target = Q_evn_target + Q_mba_used;
+      } else {
+        const r = solveQRongLVWithMba(P_rong, Q_evn_target, Q0, Qk, Sn);
+        Q_rong_target = r.Qrong; Q_mba_used = r.Qmba;
+      }
+      const Q_cap_req = Q_rong_target - Qsolar + Qtai;
+
+      card.querySelector('.t4-out-Qrong').textContent = fmt(Q_rong_target) + ' ' + unitQLabel();
+      card.querySelector('.t4-out-Qmba').textContent = fmt(Q_mba_used) + ' ' + unitQLabel();
+      card.querySelector('.t4-out-Qcap').textContent = fmt(Q_cap_req) + ' ' + unitQLabel();
+
+      results.push({name, Q_cap_req, card});
+    });
+
+    const maxReq = results.length ? Math.max(0, ...results.map(r => r.Q_cap_req)) : 0;
+    results.forEach(r => {
+      r.card.classList.toggle('row-highlight-card', maxReq > 0 && Math.abs(r.Q_cap_req - maxReq) < 1e-9);
+    });
+    $('t4_recommend').textContent = fmt(maxReq) + ' ' + unitQLabel();
+
+    renderBarChart('t4_chart', results.map(r => ({
+      label: r.name, value: r.Q_cap_req, isMax: maxReq>0 && Math.abs(r.Q_cap_req-maxReq)<1e-9
+    })));
+  }
+
+  function renderChart(containerId, points){
+    const el = $(containerId);
+    if(!points.length){ el.innerHTML = ''; return; }
+    const W = 560, H = 260, ML = 56, MR = 20, MT = 16, MB = 36;
+    const innerW = W - ML - MR, innerH = H - MT - MB;
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    let yMin = Math.min(0, ...ys), yMax = Math.max(0, ...ys);
+    if(yMin === yMax){ yMin -= 1; yMax += 1; }
+    const pad = (yMax - yMin) * 0.12;
+    yMin -= pad; yMax += pad;
+
+    const xScale = x => ML + (xMax === xMin ? innerW/2 : (x - xMin)/(xMax - xMin) * innerW);
+    const yScale = y => MT + innerH - (y - yMin)/(yMax - yMin) * innerH;
+    const zeroY = yScale(0);
+
+    const linePts = points.map(p => xScale(p.x) + ',' + yScale(p.y)).join(' ');
+
+    let gridlines = '';
+    const ticks = 5;
+    for(let i = 0; i <= ticks; i++){
+      const val = yMin + (yMax - yMin) * i / ticks;
+      const y = yScale(val);
+      gridlines += '<line x1="' + ML + '" y1="' + y + '" x2="' + (W-MR) + '" y2="' + y + '" class="gridline"/>';
+      gridlines += '<text x="' + (ML-8) + '" y="' + (y+4) + '" class="axislabel" text-anchor="end">' + fmt(val,0) + '</text>';
+    }
+    let xlabels = '';
+    points.forEach(p => {
+      xlabels += '<text x="' + xScale(p.x) + '" y="' + (H-MB+20) + '" class="axislabel" text-anchor="middle">' + p.x + '%</text>';
+    });
+    let markers = '';
+    points.forEach((p, i) => {
+      markers += '<circle cx="' + xScale(p.x) + '" cy="' + yScale(p.y) + '" r="5" class="marker" data-i="' + i + '"/>';
+    });
+
+    el.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart-svg">' +
+        gridlines +
+        '<line x1="' + ML + '" y1="' + zeroY + '" x2="' + (W-MR) + '" y2="' + zeroY + '" class="baseline-l"/>' +
+        '<polyline points="' + linePts + '" class="chart-line"/>' +
+        markers +
+        xlabels +
+      '</svg>' +
+      '<div class="chart-tooltip" id="' + containerId + '_tt"></div>';
+
+    const tt = $(containerId + '_tt');
+    el.querySelectorAll('.marker').forEach((m, i) => {
+      m.addEventListener('mouseenter', () => {
+        const p = points[i];
+        tt.style.display = 'block';
+        tt.textContent = p.x + '% tải: ' + fmt(p.y) + ' ' + unitQLabel();
+        const rect = m.getBoundingClientRect();
+        const parentRect = el.getBoundingClientRect();
+        tt.style.left = (rect.left - parentRect.left + 10) + 'px';
+        tt.style.top = (rect.top - parentRect.top - 28) + 'px';
+      });
+      m.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+    });
+  }
+
+  function renderBarChart(containerId, items){
+    const el = $(containerId);
+    if(!items.length){ el.innerHTML = '<p class="subtle">Chưa có kịch bản nào — bấm "+ Thêm kịch bản" ở trên.</p>'; return; }
+    const W = 600, H = 280, ML = 56, MR = 20, MT = 20, MB = 60;
+    const innerW = W - ML - MR, innerH = H - MT - MB;
+    const vals = items.map(i => i.value);
+    let yMin = Math.min(0, ...vals), yMax = Math.max(0, ...vals);
+    if(yMin === yMax){ yMin -= 1; yMax += 1; }
+    const pad = (yMax - yMin) * 0.15;
+    yMin -= pad; yMax += pad;
+    const yScale = y => MT + innerH - (y - yMin) / (yMax - yMin) * innerH;
+    const zeroY = yScale(0);
+    const n = items.length;
+    const bandW = innerW / n;
+    const barW = Math.min(56, bandW * 0.6);
+
+    let gridlines = '';
+    const ticks = 5;
+    for(let i = 0; i <= ticks; i++){
+      const val = yMin + (yMax - yMin) * i / ticks;
+      const y = yScale(val);
+      gridlines += '<line x1="' + ML + '" y1="' + y + '" x2="' + (W-MR) + '" y2="' + y + '" class="gridline"/>';
+      gridlines += '<text x="' + (ML-8) + '" y="' + (y+4) + '" class="axislabel" text-anchor="end">' + fmt(val,0) + '</text>';
+    }
+
+    let bars = '', labels = '';
+    items.forEach((it, i) => {
+      const cx = ML + bandW * (i + 0.5);
+      const y1 = yScale(Math.max(0, it.value));
+      const y2 = yScale(Math.min(0, it.value));
+      const h = Math.max(1, y2 - y1);
+      bars += '<rect x="' + (cx - barW/2) + '" y="' + y1 + '" width="' + barW + '" height="' + h + '" rx="3" class="bar' + (it.isMax ? ' recommend' : '') + '" data-i="' + i + '"/>';
+      const shortLabel = it.label.length > 16 ? (it.label.slice(0,15) + '…') : it.label;
+      labels += '<text x="' + cx + '" y="' + (H-MB+20) + '" class="axislabel" text-anchor="middle">' + shortLabel + '</text>';
+    });
+
+    el.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart-svg">' +
+        gridlines +
+        '<line x1="' + ML + '" y1="' + zeroY + '" x2="' + (W-MR) + '" y2="' + zeroY + '" class="baseline-l"/>' +
+        bars +
+        labels +
+      '</svg>' +
+      '<div class="chart-tooltip" id="' + containerId + '_tt"></div>';
+
+    const tt = $(containerId + '_tt');
+    el.querySelectorAll('.bar').forEach((b, i) => {
+      b.addEventListener('mouseenter', () => {
+        const it = items[i];
+        tt.style.display = 'block';
+        tt.textContent = it.label + ': ' + fmt(it.value) + ' ' + unitQLabel() + (it.isMax ? ' (đề xuất)' : '');
+        const rect = b.getBoundingClientRect();
+        const parentRect = el.getBoundingClientRect();
+        tt.style.left = (rect.left - parentRect.left + 6) + 'px';
+        tt.style.top = (rect.top - parentRect.top - 28) + 'px';
+      });
+      b.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+    });
+  }
+
+  // Group a pass/fail-labeled sample series into contiguous runs, with the
+  // boundary between runs linearly interpolated to the exact threshold crossing.
+  function computeIntervals(points, threshold){
+    const runs = [];
+    let curPass = points[0].pass;
+    let curStart = points[0].x;
+    for(let i = 1; i < points.length; i++){
+      if(points[i].pass !== curPass){
+        const a = points[i-1], b = points[i];
+        const t = (b.cosphi === a.cosphi) ? 0.5 : (threshold - a.cosphi) / (b.cosphi - a.cosphi);
+        const xc = a.x + Math.min(Math.max(t,0),1) * (b.x - a.x);
+        runs.push({pass: curPass, from: curStart, to: xc});
+        curPass = points[i].pass;
+        curStart = xc;
+      }
+    }
+    runs.push({pass: curPass, from: curStart, to: points[points.length-1].x});
+    return runs;
+  }
+
+  function t6Recalc(){
+    const cosinv = num('t6_cosinv'); const dirinv = radioVal('t6invdir');
+    const Ptai = num('t6_Ptai');
+    const costai = num('t6_costai');
+    const Qtai = signedQ(Ptai, costai, 'lag'); // tải luôn hấp thụ Q
+    const Qcap = num('t6_Qcap');
+    const threshold = num('t6_threshold') || 0.92;
+    const Pscan = Math.max(num('t6_Pscan'), 1);
+
+    const N = 300;
+    const points = [];
+    for(let i = 0; i <= N; i++){
+      const x = Pscan * i / N;
+      const Qsolar = signedQ(x, cosinv, dirinv);
+      const Prong = x - Ptai;
+      const Qrong = Qsolar - Qtai + Qcap;
+      const r = fromPQ(Prong, Qrong);
+      points.push({x, cosphi: r.cosphi, pass: r.cosphi >= threshold});
+    }
+    // make sure the exact self-consumption balance point (Prong=0) is sampled,
+    // since cosφ can swing sharply right around it
+    if(Ptai > 0 && Ptai < Pscan){
+      const Qsolar = signedQ(Ptai, cosinv, dirinv);
+      const Qrong = Qsolar - Qtai + Qcap;
+      const r = fromPQ(0, Qrong);
+      points.push({x: Ptai, cosphi: r.cosphi, pass: r.cosphi >= threshold});
+      points.sort((a,b) => a.x - b.x);
+    }
+
+    const runs = computeIntervals(points, threshold);
+
+    let summaryHtml = '';
+    runs.forEach(run => {
+      const cls = run.pass ? 'badge-good' : 'badge-critical';
+      const label = run.pass ? 'ĐẠT' : 'KHÔNG ĐẠT';
+      summaryHtml += '<div style="margin-bottom:6px;"><span class="badge ' + cls + '">' + label + '</span> P_solar ∈ [' +
+        fmt(run.from,0) + ', ' + fmt(run.to,0) + '] ' + unitPLabel() + '</div>';
+    });
+    $('t6_summary').innerHTML = summaryHtml;
+
+    const recBox = $('t6_recommend');
+    if(runs[0].pass){
+      let html = 'P_Solar_Max đề xuất (đạt liên tục từ 0): <b>' + fmt(runs[0].to,0) + ' ' + unitPLabel() + '</b>';
+      if(runs.length > 1){
+        html += '<br><span style="color:var(--critical);">⚠ Có vùng P_solar KHÔNG đạt ở giữa phạm vi quét — xem chi tiết các khoảng bên dưới trước khi chọn công suất lắp đặt lớn hơn mức này.</span>';
+      }
+      recBox.className = 'notebox info';
+      recBox.innerHTML = html;
+    } else {
+      recBox.className = 'notebox warn';
+      recBox.innerHTML = '⚠ <b>Ngay cả khi CHƯA có solar (P_solar = 0), cosφ tải đã KHÔNG đạt ngưỡng ' + fmt(threshold,2) +
+        '.</b> Cần xử lý bù công suất phản kháng cho tải trước khi tính lắp thêm solar.';
+    }
+
+    renderComplianceChart('t6_chart', points, threshold, runs);
+  }
+
+  function renderComplianceChart(containerId, points, threshold, runs){
+    const el = $(containerId);
+    const W = 620, H = 300, ML = 60, MR = 20, MT = 20, MB = 46;
+    const innerW = W - ML - MR, innerH = H - MT - MB;
+    const xs = points.map(p => p.x);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const minCos = Math.min(threshold, ...points.map(p => p.cosphi));
+    const yMin = Math.max(0, Math.floor(minCos*10)/10 - 0.05);
+    const yMax = 1.02;
+
+    const xScale = x => ML + (xMax === xMin ? innerW/2 : (x - xMin)/(xMax - xMin) * innerW);
+    const yScale = y => MT + innerH - (y - yMin)/(yMax - yMin) * innerH;
+
+    let gridlines = '';
+    for(let i = 0; i <= 5; i++){
+      const val = yMin + (yMax - yMin) * i / 5;
+      const y = yScale(val);
+      gridlines += '<line x1="' + ML + '" y1="' + y + '" x2="' + (W-MR) + '" y2="' + y + '" class="gridline"/>';
+      gridlines += '<text x="' + (ML-8) + '" y="' + (y+4) + '" class="axislabel" text-anchor="end">' + fmt(val,2) + '</text>';
+    }
+    let xlabels = '';
+    const xticks = 5;
+    for(let i = 0; i <= xticks; i++){
+      const val = xMin + (xMax - xMin) * i / xticks;
+      xlabels += '<text x="' + xScale(val) + '" y="' + (H-MB+20) + '" class="axislabel" text-anchor="middle">' + fmt(val,0) + '</text>';
+    }
+    xlabels += '<text x="' + ((ML+W-MR)/2) + '" y="' + (H-6) + '" class="axislabel" text-anchor="middle">P_solar (' + unitPLabel() + ')</text>';
+
+    const thY = yScale(threshold);
+    const thresholdLine = '<line x1="' + ML + '" y1="' + thY + '" x2="' + (W-MR) + '" y2="' + thY + '" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4,4"/>' +
+      '<text x="' + (W-MR) + '" y="' + (thY-6) + '" class="axislabel" text-anchor="end">Ngưỡng ' + fmt(threshold,2) + '</text>';
+
+    let segs = '';
+    runs.forEach(run => {
+      const segPts = points.filter(p => p.x >= run.from - 1e-6 && p.x <= run.to + 1e-6);
+      if(segPts.length < 2) return;
+      const pts = segPts.map(p => xScale(p.x) + ',' + yScale(p.cosphi)).join(' ');
+      segs += '<polyline points="' + pts + '" fill="none" stroke="' + (run.pass ? 'var(--good)' : 'var(--critical)') + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    });
+
+    el.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart-svg">' +
+        gridlines + thresholdLine + segs + xlabels +
+        '<circle r="4.5" fill="var(--text-primary)" style="display:none" class="t6-hover-marker"/>' +
+        '<rect x="' + ML + '" y="' + MT + '" width="' + innerW + '" height="' + innerH + '" fill="transparent" class="t6-hover-capture" style="cursor:crosshair"/>' +
+      '</svg>' +
+      '<div style="display:flex; gap:16px; margin-top:6px; font-size:12px; color:var(--text-secondary);">' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--good);margin-right:4px;"></span>Đạt (cosφ ≥ ngưỡng)</span>' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--critical);margin-right:4px;"></span>Không đạt</span>' +
+      '</div>' +
+      '<div class="chart-tooltip" id="' + containerId + '_tt"></div>';
+
+    const svgEl = el.querySelector('svg');
+    const marker = el.querySelector('.t6-hover-marker');
+    const capture = el.querySelector('.t6-hover-capture');
+    const tt = $(containerId + '_tt');
+
+    capture.addEventListener('mousemove', (ev) => {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const mx = (ev.clientX - rect.left) * scaleX;
+      const xVal = xMin + (mx - ML) / innerW * (xMax - xMin);
+      let nearest = points[0], bestd = Infinity;
+      points.forEach(p => { const d = Math.abs(p.x - xVal); if(d < bestd){ bestd = d; nearest = p; } });
+      marker.setAttribute('cx', xScale(nearest.x));
+      marker.setAttribute('cy', yScale(nearest.cosphi));
+      marker.style.display = 'block';
+      tt.style.display = 'block';
+      tt.textContent = 'P_solar=' + fmt(nearest.x,0) + ' ' + unitPLabel() + ' → cosφ=' + fmt(nearest.cosphi,4) + (nearest.pass ? ' (đạt)' : ' (không đạt)');
+      const parentRect = el.getBoundingClientRect();
+      tt.style.left = (ev.clientX - parentRect.left + 12) + 'px';
+      tt.style.top = (ev.clientY - parentRect.top - 28) + 'px';
+    });
+    capture.addEventListener('mouseleave', () => { tt.style.display = 'none'; marker.style.display = 'none'; });
+  }
+
+  function t7Recalc(){
+    const ctpos = radioVal('t7ctpos');
+    const cosinv = num('t7_cosinv'); const dirinv = radioVal('t7invdir');
+    const Ptai = num('t7_Ptai');
+    const costai = num('t7_costai');
+    const Qtai = signedQ(Ptai, costai, 'lag'); // tải luôn hấp thụ Q
+    const cosRelay = num('t7_cosrelay');
+    const kRelay = Math.tan(Math.acos(Math.min(Math.max(cosRelay,0.0001),1)));
+    const QcapMax = Math.max(num('t7_Qcapmax'), 0);
+    const threshold = num('t7_threshold') || 0.92;
+    const Pscan = Math.max(num('t7_Pscan'), 1);
+
+    function computeQcap(x){
+      // P mà relay APFC "thấy" tại CT của nó, tùy vị trí CT so với điểm hòa solar
+      const Pdo = (ctpos === 'before') ? (Ptai - x) : Ptai;
+      const Qresidual_target = Math.abs(Pdo) * kRelay;
+      const Qcap_target = Qtai - Qresidual_target;
+      return Math.max(0, Math.min(Qcap_target, QcapMax));
+    }
+
+    const N = 300;
+    const points = [];
+    for(let i = 0; i <= N; i++){
+      const x = Pscan * i / N;
+      const Qsolar = signedQ(x, cosinv, dirinv);
+      const Qcap = computeQcap(x);
+      const Prong = x - Ptai;
+      const Qrong = Qsolar - Qtai + Qcap;
+      const r = fromPQ(Prong, Qrong);
+      points.push({x, cosphi: r.cosphi, pass: r.cosphi >= threshold});
+    }
+    if(Ptai > 0 && Ptai < Pscan){
+      const Qsolar = signedQ(Ptai, cosinv, dirinv);
+      const Qcap = computeQcap(Ptai);
+      const Qrong = Qsolar - Qtai + Qcap;
+      const r = fromPQ(0, Qrong);
+      points.push({x: Ptai, cosphi: r.cosphi, pass: r.cosphi >= threshold});
+      points.sort((a,b) => a.x - b.x);
+    }
+
+    const runs = computeIntervals(points, threshold);
+
+    let summaryHtml = '';
+    runs.forEach(run => {
+      const cls = run.pass ? 'badge-good' : 'badge-critical';
+      const label = run.pass ? 'ĐẠT' : 'KHÔNG ĐẠT';
+      summaryHtml += '<div style="margin-bottom:6px;"><span class="badge ' + cls + '">' + label + '</span> P_solar ∈ [' +
+        fmt(run.from,0) + ', ' + fmt(run.to,0) + '] ' + unitPLabel() + '</div>';
+    });
+    $('t7_summary').innerHTML = summaryHtml;
+
+    const recBox = $('t7_recommend');
+    const ctNote = (ctpos === 'before')
+      ? 'CT đang đặt TRƯỚC solar (bị che) — Q_cap sẽ tự giảm khi solar tăng.'
+      : 'CT đang đặt SAU solar (đúng thiết kế) — Q_cap không đổi theo solar.';
+    if(runs[0].pass){
+      let html = ctNote + '<br>P_Solar_Max đề xuất (đạt liên tục từ 0): <b>' + fmt(runs[0].to,0) + ' ' + unitPLabel() + '</b>';
+      if(runs.length > 1){
+        html += '<br><span style="color:var(--critical);">⚠ Có vùng P_solar KHÔNG đạt ở giữa phạm vi quét — xem chi tiết các khoảng bên dưới.</span>';
+      }
+      recBox.className = 'notebox info';
+      recBox.innerHTML = html;
+    } else {
+      recBox.className = 'notebox warn';
+      recBox.innerHTML = ctNote + '<br>⚠ <b>Ngay cả khi CHƯA có solar (P_solar = 0), cosφ đã KHÔNG đạt ngưỡng ' + fmt(threshold,2) +
+        '.</b> Cần xử lý bù công suất phản kháng cho tải trước khi tính lắp thêm solar.';
+    }
+
+    renderComplianceChart('t7_chart', points, threshold, runs);
+  }
+
+  function recalcAll(){
+    syncVisibility();
+    updateUnits();
+    t1Recalc();
+    t2Recalc();
+    t3Recalc();
+    t4Recalc();
+    t6Recalc();
+    t7Recalc();
+  }
+
+  document.querySelectorAll('.tabbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      $(btn.dataset.target).classList.add('active');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-remove]');
+    if(rm){
+      const card = rm.closest('.scenario-card');
+      if(card) card.remove();
+      recalcAll();
+      return;
+    }
+    if(e.target.closest('#t4_add_btn')){
+      addScenario('Kịch bản mới', 1000, 1000, 0.85);
+      recalcAll();
+    }
+  });
+
+  document.addEventListener('input', recalcAll);
+  document.addEventListener('change', recalcAll);
+  seedScenarios();
+  recalcAll();
+})();
+</script>
+</body>
+</html>

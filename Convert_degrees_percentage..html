@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chuyển đổi Độ nghiêng mái (Độ ↔ Phần trăm)</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-border: #334155;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #f59e0b;
+    --accent-dim: #b45309;
+    --error: #f87171;
+    --input-bg: #0f172a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --card-border: #e2e8f0;
+      --text: #0f172a;
+      --text-dim: #64748b;
+      --accent: #d97706;
+      --accent-dim: #b45309;
+      --error: #dc2626;
+      --input-bg: #f8fafc;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: clamp(1rem, 4vw, 2.5rem) clamp(0.75rem, 4vw, 1.5rem);
+  }
+  .wrap {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  h1 {
+    font-size: clamp(1.25rem, 4vw, 1.6rem);
+    margin: 0 0 0.25rem 0;
+    text-align: center;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+    margin: 0;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 1rem;
+    padding: clamp(1rem, 4vw, 1.75rem);
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--input-bg);
+    border: 2px solid var(--card-border);
+    border-radius: 0.75rem;
+    padding: 0.25rem 0.9rem;
+    transition: border-color 0.15s ease;
+  }
+  .input-row:focus-within {
+    border-color: var(--accent);
+  }
+  .input-row.invalid {
+    border-color: var(--error);
+  }
+  input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: clamp(1.4rem, 5vw, 1.8rem);
+    font-weight: 700;
+    padding: 0.65rem 0;
+    min-height: 44px;
+    outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .unit {
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .error-msg {
+    min-height: 1.1rem;
+    color: var(--error);
+    font-size: 0.82rem;
+  }
+  .swap-hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: -0.5rem;
+  }
+  .illustration {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0 0.75rem 0;
+  }
+  svg { display: block; max-width: 100%; height: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: clamp(0.85rem, 2.8vw, 0.95rem);
+  }
+  th, td {
+    text-align: center;
+    padding: 0.55rem 0.3rem;
+    border-bottom: 1px solid var(--card-border);
+  }
+  th {
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  tr:last-child td { border-bottom: none; }
+  .quick-table-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+  }
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    padding-bottom: 0.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <h1>Chuyển đổi Độ nghiêng mái</h1>
+    <p class="subtitle">Nhập 1 ô, ô còn lại tự tính (Độ ⇄ Phần trăm dốc)</p>
+  </div>
+
+  <div class="card">
+    <div class="illustration">
+      <svg width="220" height="110" viewBox="0 0 220 110">
+        <line x1="10" y1="100" x2="200" y2="100" stroke="currentColor" stroke-width="2" opacity="0.4"/>
+        <line x1="10" y1="100" x2="10" y2="30" stroke="currentColor" stroke-width="2" opacity="0.4" stroke-dasharray="4 4"/>
+        <line x1="10" y1="100" x2="200" y2="30" stroke="#f59e0b" stroke-width="3"/>
+        <path d="M 40 100 A 30 30 0 0 1 34 82" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+        <text x="46" y="90" font-size="12" fill="currentColor" opacity="0.7">góc</text>
+        <text x="95" y="118" font-size="11" fill="currentColor" opacity="0.6">chiều ngang (run)</text>
+        <text x="2" y="65" font-size="11" fill="currentColor" opacity="0.6" transform="rotate(-90 2 65)">cao (rise)</text>
+      </svg>
+    </div>
+
+    <div class="field">
+      <label for="deg">Độ nghiêng</label>
+      <div class="input-row" id="degRow">
+        <input type="text" id="deg" inputmode="decimal" placeholder="VD: 15" autocomplete="off">
+        <span class="unit">°</span>
+      </div>
+      <div class="error-msg" id="degErr"></div>
+    </div>
+
+    <div class="field">
+      <label for="pct">Độ dốc phần trăm</label>
+      <div class="input-row" id="pctRow">
+        <input type="text" id="pct" inputmode="decimal" placeholder="VD: 26.8" autocomplete="off">
+        <span class="unit">%</span>
+      </div>
+      <div class="error-msg" id="pctErr"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="quick-table-title">Bảng tra nhanh các góc phổ biến</div>
+    <table>
+      <thead>
+        <tr><th>Độ (°)</th><th>Phần trăm (%)</th></tr>
+      </thead>
+      <tbody id="quickTable"></tbody>
+    </table>
+  </div>
+
+  <footer>% = tan(độ) × 100 &nbsp;·&nbsp; độ = atan(%/100)</footer>
+
+</div>
+
+<script>
+(function () {
+  var degInput = document.getElementById('deg');
+  var pctInput = document.getElementById('pct');
+  var degRow = document.getElementById('degRow');
+  var pctRow = document.getElementById('pctRow');
+  var degErr = document.getElementById('degErr');
+  var pctErr = document.getElementById('pctErr');
+
+  function parseNum(str) {
+    if (str === null || str === undefined) return NaN;
+    var s = str.trim().replace(',', '.');
+    if (s === '') return NaN;
+    return Number(s);
+  }
+
+  function round(n, digits) {
+    var f = Math.pow(10, digits);
+    return Math.round(n * f) / f;
+  }
+
+  function degToPct(deg) {
+    return Math.tan(deg * Math.PI / 180) * 100;
+  }
+
+  function pctToDeg(pct) {
+    return Math.atan(pct / 100) * 180 / Math.PI;
+  }
+
+  function setInvalid(row, errEl, msg) {
+    row.classList.add('invalid');
+    errEl.textContent = msg;
+  }
+
+  function setValid(row, errEl) {
+    row.classList.remove('invalid');
+    errEl.textContent = '';
+  }
+
+  function onDegInput() {
+    var raw = degInput.value;
+    if (raw.trim() === '') {
+      setValid(degRow, degErr);
+      setValid(pctRow, pctErr);
+      pctInput.value = '';
+      return;
+    }
+    var deg = parseNum(raw);
+    if (isNaN(deg)) {
+      setInvalid(degRow, degErr, 'Vui lòng nhập một số hợp lệ.');
+      return;
+    }
+    if (deg < 0 || deg >= 90) {
+      setInvalid(degRow, degErr, 'Độ nghiêng phải trong khoảng 0° đến dưới 90°.');
+      return;
+    }
+    setValid(degRow, degErr);
+    setValid(pctRow, pctErr);
+    pctInput.value = round(degToPct(deg), 2);
+  }
+
+  function onPctInput() {
+    var raw = pctInput.value;
+    if (raw.trim() === '') {
+      setValid(pctRow, pctErr);
+      setValid(degRow, degErr);
+      degInput.value = '';
+      return;
+    }
+    var pct = parseNum(raw);
+    if (isNaN(pct)) {
+      setInvalid(pctRow, pctErr, 'Vui lòng nhập một số hợp lệ.');
+      return;
+    }
+    if (pct < 0) {
+      setInvalid(pctRow, pctErr, 'Độ dốc phần trăm phải lớn hơn hoặc bằng 0.');
+      return;
+    }
+    setValid(pctRow, pctErr);
+    setValid(degRow, degErr);
+    degInput.value = round(pctToDeg(pct), 2);
+  }
+
+  degInput.addEventListener('input', onDegInput);
+  pctInput.addEventListener('input', onPctInput);
+
+  // Giá trị khởi tạo mẫu
+  degInput.value = 15;
+  onDegInput();
+
+  // Bảng tra nhanh
+  var quickAngles = [5, 10, 15, 20, 30, 45];
+  var tbody = document.getElementById('quickTable');
+  quickAngles.forEach(function (a) {
+    var tr = document.createElement('tr');
+    var tdDeg = document.createElement('td');
+    var tdPct = document.createElement('td');
+    tdDeg.textContent = a + '°';
+    tdPct.textContent = round(degToPct(a), 1) + '%';
+    tr.appendChild(tdDeg);
+    tr.appendChild(tdPct);
+    tbody.appendChild(tr);
+  });
+})();
+</script>
+
+</body>
+</html>
