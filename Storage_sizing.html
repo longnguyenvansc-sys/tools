@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Sizing Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sun: #F5A623;
+    --sun-pale: #FEF3DC;
+    --night: #0F2A4A;
+    --night-mid: #1A3D6B;
+    --sky: #1E88E5;
+    --sky-light: #E3F2FD;
+    --green: #00C48C;
+    --green-pale: #E0FAF3;
+    --red: #FF5252;
+    --red-pale: #FFEBEE;
+    --text: #0F2A4A;
+    --text-mid: #4A6080;
+    --text-soft: #8FA3BA;
+    --border: #D8E5F0;
+    --surface: #F7FAFE;
+    --white: #FFFFFF;
+    --radius: 12px;
+    --radius-lg: 20px;
+    --shadow: 0 2px 12px rgba(15,42,74,0.08);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Sora', sans-serif; background: #EBF3FC; color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--night); padding: 28px 24px 32px; text-align: center; position: relative; overflow: hidden; }
+  .header::before { content: ''; position: absolute; top: -60px; right: -60px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(245,166,35,0.18) 0%, transparent 70%); border-radius: 50%; }
+  .header-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .header p { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 4px; font-weight: 300; }
+
+  .main { max-width: 860px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  .card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 24px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-soft); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-title .badge { background: var(--sun); color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 11px; letter-spacing: 0; font-weight: 700; }
+  .card-title .badge.blue { background: var(--sky); }
+  .card-title .badge.green { background: var(--green); }
+
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 520px) { .input-grid { grid-template-columns: 1fr; } }
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group label { font-size: 12px; font-weight: 600; color: var(--text-mid); letter-spacing: 0.2px; }
+  .input-row { display: flex; align-items: center; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .input-row:focus-within { border-color: var(--sky); }
+  .input-row input { flex: 1; border: none; background: transparent; padding: 11px 14px; font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: var(--text); outline: none; width: 100%; min-width: 0; }
+  .input-row .unit { padding: 0 14px 0 4px; font-size: 12px; font-weight: 600; color: var(--text-soft); white-space: nowrap; }
+
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--border); outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--sky); border: 3px solid #fff; box-shadow: 0 1px 6px rgba(30,136,229,0.35); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--sky); border: 3px solid #fff; cursor: pointer; }
+  .range-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+
+  .split-bar { height: 28px; border-radius: 8px; overflow: hidden; display: flex; margin-top: 10px; }
+  .split-day { background: linear-gradient(90deg, #F5A623, #FFD54F); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #7A4E00; transition: width 0.3s; min-width: 30px; }
+  .split-night { background: linear-gradient(90deg, #1A3D6B, #0F2A4A); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.8); transition: width 0.3s; min-width: 30px; }
+
+  .reserve-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+  .reserve-btn { padding: 10px 8px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; text-align: center; transition: all 0.18s; }
+  .reserve-btn.active { border-color: var(--sky); background: var(--sky-light); }
+  .reserve-btn .rb-label { font-size: 12px; font-weight: 700; color: var(--text); }
+  .reserve-btn.active .rb-label { color: var(--sky); }
+  .reserve-btn .rb-desc { font-size: 10px; color: var(--text-soft); margin-top: 2px; line-height: 1.3; }
+
+  .divider { border: none; border-top: 1px dashed var(--border); margin: 20px 0; }
+
+  .section-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 0; display: flex; align-items: center; gap: 10px; background: var(--night); border-radius: 12px 12px 0 0; padding: 12px 16px; }
+  .section-title .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sun); flex-shrink: 0; }
+  .section-title .dot.blue { background: #64B5F6; }
+  .section-title .dot.green { background: var(--green); }
+  .section-sub { font-size: 12px; color: #fff; margin-bottom: 12px; padding: 7px 16px 8px; background: var(--night-mid); border-radius: 0 0 12px 12px; opacity: 0.85; }
+
+  .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 500px) { .result-grid { grid-template-columns: 1fr 1fr; } }
+  .result-card { background: var(--surface); border-radius: 14px; padding: 16px; border: 1px solid var(--border); }
+  .result-card.highlight { background: var(--night); border-color: var(--night); }
+  .result-card.highlight .rc-label { color: rgba(255,255,255,0.5); }
+  .result-card.highlight .rc-value { color: #fff; }
+  .result-card.highlight .rc-unit { color: rgba(255,255,255,0.6); }
+  .result-card.highlight .rc-note { color: rgba(255,255,255,0.45); }
+  .result-card.sun { background: var(--sun-pale); border-color: rgba(245,166,35,0.2); }
+  .result-card.sun .rc-value { color: #B8740A; }
+  .result-card.green-card { background: var(--green-pale); border-color: rgba(0,196,140,0.2); }
+  .result-card.green-card .rc-value { color: #007A5A; }
+  .result-card.red-card { background: var(--red-pale); border-color: rgba(255,82,82,0.2); }
+  .result-card.red-card .rc-value { color: #C62828; }
+  .rc-label { font-size: 11px; font-weight: 600; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .rc-value { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; color: var(--text); line-height: 1; }
+  .rc-unit { font-size: 12px; font-weight: 400; color: var(--text-soft); margin-left: 3px; }
+  .rc-note { font-size: 11px; color: var(--text-soft); margin-top: 5px; line-height: 1.4; }
+
+  .flow-section { margin-top: 12px; }
+  .flow-label { font-size: 11px; font-weight: 600; color: var(--text-mid); margin-bottom: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
+  .flow-bar { height: 20px; border-radius: 6px; background: var(--border); overflow: hidden; display: flex; margin-bottom: 10px; }
+  .fb-load { background: var(--sky); }
+  .fb-charge { background: var(--green); }
+  .fb-surplus { background: var(--red); opacity: 0.7; }
+  .flow-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-mid); }
+  .fl-item { display: flex; align-items: center; gap: 5px; }
+  .fl-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  .warn-box { background: var(--red-pale); border: 1px solid rgba(255,82,82,0.25); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #B71C1C; margin-top: 12px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.6; }
+  .info-box { background: var(--sky-light); border: 1px solid rgba(30,136,229,0.2); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #1565C0; margin-top: 12px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.6; }
+  .ok-box { background: var(--green-pale); border: 1px solid rgba(0,196,140,0.2); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #005C40; margin-top: 12px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.6; }
+
+  .cost-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .cost-table td { padding: 9px 12px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .cost-table td:last-child { text-align: right; font-family: 'DM Mono', monospace; font-weight: 500; white-space: nowrap; }
+  .cost-table tr:last-child td { border-bottom: none; font-weight: 700; font-size: 14px; }
+
+  .payback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .payback-card { background: var(--surface); border-radius: 12px; padding: 14px; border: 1px solid var(--border); text-align: center; }
+  .payback-num { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; color: var(--night); }
+  .payback-lbl { font-size: 11px; color: var(--text-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .footer-note { text-align: center; font-size: 11px; color: var(--text-soft); padding: 20px 0 8px; line-height: 1.6; }
+  .card { animation: fadeUp 0.3s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-icon">☀️</span>
+  <h1>Solar Sizing Calculator</h1>
+  <p>Tính toán hệ thống năng lượng mặt trời mái nhà có lưu trữ</p>
+</div>
+
+<div class="main">
+
+  <!-- INPUT CARD -->
+  <div class="card">
+    <div class="card-title"><span class="badge">THÔNG SỐ ĐẦU VÀO</span></div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label>Tiêu thụ điện hàng ngày</label>
+        <div class="input-row">
+          <input type="number" id="daily_load" value="25" min="1" max="200" step="0.5">
+          <span class="unit">kWh/ngày</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Số giờ nắng trung bình</label>
+        <div class="input-row">
+          <input type="number" id="sun_hours" value="4.5" min="1" max="8" step="0.1">
+          <span class="unit">giờ/ngày</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Hiệu suất hệ thống</label>
+        <div class="input-row">
+          <input type="number" id="system_eff" value="80" min="50" max="98" step="1">
+          <span class="unit">%</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Giá điện lưới (EVN)</label>
+        <div class="input-row">
+          <input type="number" id="tariff" value="3000" min="1000" max="10000" step="100">
+          <span class="unit">đ/kWh</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="input-group">
+      <label>% Điện tiêu thụ ban ngày (6h–18h)</label>
+      <div style="margin-top:4px;">
+        <input type="range" id="day_pct" min="0" max="100" value="40" step="1">
+        <div class="range-labels">
+          <span>0%</span>
+          <span id="day_pct_lbl" style="font-weight:700;color:var(--sun)">40% ban ngày</span>
+          <span>100%</span>
+        </div>
+      </div>
+      <div class="split-bar">
+        <div class="split-day" id="bar_day" style="width:40%">☀️ <span id="bar_day_kwh">10</span> kWh</div>
+        <div class="split-night" id="bar_night" style="width:60%">🌙 <span id="bar_night_kwh">15</span> kWh</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="input-group">
+      <label>Mức dự phòng cho ngày xấu trời</label>
+      <div class="reserve-group">
+        <div class="reserve-btn" data-val="0" onclick="selectReserve(0)">
+          <div class="rb-label">Tối thiểu 0%</div>
+          <div class="rb-desc">Vừa đủ dùng, không buffer</div>
+        </div>
+        <div class="reserve-btn active" data-val="20" onclick="selectReserve(20)">
+          <div class="rb-label">Khuyến nghị +20%</div>
+          <div class="rb-desc">Bù ngày nhiều mây</div>
+        </div>
+        <div class="reserve-btn" data-val="40" onclick="selectReserve(40)">
+          <div class="rb-label">Dự phòng +40%</div>
+          <div class="rb-desc">Cho mùa mưa / âm u</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHẦN 1 -->
+  <div style="margin-top:8px;">
+  <div class="section-title">
+    <span class="dot"></span> Phần 1 — Sizing tự động tối ưu
+  </div>
+  <div class="section-sub">Hệ thống tự tính toán kWp, inverter, pin phù hợp nhất với nhu cầu</div>
+  </div>
+  <div class="card" id="result1"></div>
+
+  <!-- PHẦN 2 -->
+  <div style="margin-top:16px;">
+  <div class="section-title">
+    <span class="dot blue"></span> Phần 2 — Nhập kWp tùy chọn
+  </div>
+  <div class="section-sub">Kiểm tra xem kWp bạn muốn lắp phù hợp đến đâu với nhu cầu thực tế</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge blue">NHẬP THÔNG SỐ</span></div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label>Công suất PV mong muốn</label>
+        <div class="input-row">
+          <input type="number" id="manual_kwp" value="10" min="0.5" max="200" step="0.5">
+          <span class="unit">kWp</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Pin lưu trữ <span id="batt_auto_tag" style="font-weight:400;color:var(--sky);font-size:11px;">(tự động)</span></label>
+        <div class="input-row">
+          <input type="number" id="manual_batt" min="0.5" max="200" step="0.5" placeholder="Tự động">
+          <span class="unit">kWh</span>
+        </div>
+      </div>
+    </div>
+    <div id="batt_hint" style="font-size:11px;color:var(--text-soft);margin-top:8px;padding-left:2px;"></div>
+  </div>
+  <div class="card" id="result2"></div>
+
+  <!-- CHI PHÍ -->
+  <div style="margin-top:16px;">
+  <div class="section-title">
+    <span class="dot" style="background:var(--green)"></span> Chi phí & Hoàn vốn
+  </div>
+  <div class="section-sub">Ước tính sơ bộ theo giá thị trường VN 2024–2025</div>
+  </div>
+  <div class="card" id="cost_card"></div>
+
+  <div class="footer-note">
+    DoD cố định 90% (LFP tiêu chuẩn) · Pin sizing theo nhu cầu ban đêm · DC/AC ratio 1.1<br>
+    Đơn giá tham chiếu: Tấm pin + khung + công ~6 tr/kWp · Inverter hybrid ~4.5 tr/kW · Pin LFP ~3 tr/kWh · Cố định ~28 tr
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let reservePct = 20;
+
+function selectReserve(val) {
+  reservePct = val;
+  document.querySelectorAll('.reserve-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.val) === val);
+  });
+  recalcAll();
+}
+
+function updateSplit() {
+  const pct   = parseInt(document.getElementById('day_pct').value);
+  const total = parseFloat(document.getElementById('daily_load').value) || 25;
+  const dayKwh   = +(total * pct / 100).toFixed(1);
+  const nightKwh = +(total - dayKwh).toFixed(1);
+  document.getElementById('day_pct_lbl').textContent = pct + '% ban ngày';
+  document.getElementById('bar_day').style.width   = Math.max(pct, 8) + '%';
+  document.getElementById('bar_night').style.width = Math.max(100 - pct, 8) + '%';
+  document.getElementById('bar_day_kwh').textContent   = dayKwh;
+  document.getElementById('bar_night_kwh').textContent = nightKwh;
+  // Tải đêm thay đổi → auto battery cũng thay đổi → reset field về auto
+  const battEl = document.getElementById('manual_batt');
+  if (battEl) battEl.value = '';
+  recalcAll();
+}
+
+// ─── Core calculation (FIXED LOGIC) ──────────────────────────────────────────
+//
+// Battery sizing rule:
+//   battCap = nightLoad / DOD          ← sized to COVER night demand only
+//   actualCharge = min(pvSurplus, battCap × DOD)  ← pin nạp đến đầy thôi
+//   surplus = pvSurplus - actualCharge  ← phần PV thừa thật sự (không cần pin lớn hơn)
+//
+// PV thừa nhiều KHÔNG có nghĩa là cần pin lớn hơn —
+// pin chỉ cần đủ bù tải ban đêm, phần còn lại báo là lãng phí.
+
+function getInputs() {
+  const daily  = parseFloat(document.getElementById('daily_load').value) || 25;
+  const sunH   = parseFloat(document.getElementById('sun_hours').value)  || 4.5;
+  const sysEff = parseFloat(document.getElementById('system_eff').value) || 80;
+  const tariff = parseFloat(document.getElementById('tariff').value)     || 3000;
+  const dayPct = parseInt(document.getElementById('day_pct').value)      || 40;
+  return { daily, sunH, sysEff: sysEff / 100, tariff, dayPct };
+}
+
+function calcSystem(kwp, inp, battOverride) {
+  const { daily, sunH, sysEff, dayPct } = inp;
+  const DOD = 0.90;
+
+  const pvDaily   = kwp * sunH * sysEff;         // kWh PV sinh ra mỗi ngày
+  const dayLoad   = daily * dayPct / 100;         // kWh tải ban ngày
+  const nightLoad = daily - dayLoad;              // kWh tải ban đêm
+
+  // Pin sizing: dùng override nếu có, không thì tính theo nhu cầu ban đêm
+  const battAuto    = nightLoad / DOD;
+  const battCap     = (battOverride != null && battOverride > 0) ? battOverride : battAuto;
+  const battRounded = Math.ceil(battCap / 0.5) * 0.5;
+
+  // Sản lượng PV phân bổ
+  const pvSurplus    = Math.max(pvDaily - dayLoad, 0);
+  const actualCharge = Math.min(pvSurplus, battRounded * DOD);
+  const pvWaste      = Math.max(pvSurplus - actualCharge, 0);
+
+  // Thiếu hụt ban đêm
+  const battDischarge = Math.min(actualCharge, battRounded * DOD);
+  const gridNeeded    = Math.max(nightLoad - battDischarge, 0);
+
+  // Inverter: DC/AC ratio 1.1 → inverterAC = kWp / 1.1
+  const invKw = Math.ceil(Math.max(kwp / 1.1, 3) / 0.5) * 0.5;
+
+  return {
+    pvDaily, dayLoad, nightLoad,
+    battAuto: Math.ceil(battAuto / 0.5) * 0.5,   // giá trị auto để hiển thị hint
+    battCap, battRounded,
+    pvSurplus, actualCharge, pvWaste,
+    battDischarge, gridNeeded,
+    invKw, DOD
+  };
+}
+
+// Tính kWp tối ưu cho Phần 1
+function optimalKwp(inp) {
+  const { daily, sunH, sysEff, dayPct } = inp;
+  const dayLoad   = daily * dayPct / 100;
+  const nightLoad = daily - dayLoad;
+  const buffer    = 1 + reservePct / 100;
+  // PV phải đủ bù tải ngày + sạc đầy pin ban đêm, có hệ số buffer
+  const pvTarget  = (dayLoad + nightLoad) * buffer;
+  return Math.ceil((pvTarget / (sunH * sysEff)) / 0.5) * 0.5;
+}
+
+// ─── Render helpers ───────────────────────────────────────────────────────────
+function f1(n)   { return (+n).toFixed(1); }
+function f0(n)   { return Math.round(+n).toString(); }
+function fCur(n) { return (Math.round(n / 1_000_000 * 10) / 10).toFixed(1) + ' tr'; }
+
+function renderResultCards(r, kwp) {
+  const battCoverPct = Math.min(r.battDischarge / r.nightLoad * 100, 100);
+  const surplusLabel = r.pvWaste > 0.05 ? 'red-card' : '';
+
+  // Status message
+  let statusBox = '';
+  if (r.pvWaste > 1 && r.gridNeeded > 1) {
+    statusBox = `<div class="warn-box">⚠️ PV dư <b>${f1(r.pvWaste)} kWh/ngày</b> nhưng pin vẫn chưa đủ bù tải đêm — cần thêm <b>${f1(r.gridNeeded)} kWh</b> từ lưới. Xem xét tăng dung lượng pin hoặc giảm kWp.</div>`;
+  } else if (r.pvWaste > 1) {
+    statusBox = `<div class="warn-box">⚠️ PV dư <b>${f1(r.pvWaste)} kWh/ngày</b> — phần này phát lưới (nếu có net metering) hoặc bị lãng phí. Có thể giảm kWp để tiết kiệm chi phí đầu tư.</div>`;
+  } else if (r.gridNeeded > 1) {
+    statusBox = `<div class="info-box">ℹ️ Cần mua thêm <b>${f1(r.gridNeeded)} kWh/đêm</b> từ lưới EVN. Pin đáp ứng ${f0(battCoverPct)}% tải ban đêm.</div>`;
+  } else {
+    statusBox = `<div class="ok-box">✅ Cân bằng tốt — pin đủ bù tải ban đêm, PV không dư đáng kể.</div>`;
+  }
+
+  // Flow bar
+  const total = Math.max(r.pvDaily, r.daily) * 1.05 || r.pvDaily * 1.05;
+  const loadPct    = Math.min(r.dayLoad       / r.pvDaily * 100, 100);
+  const chargePct  = Math.min(r.actualCharge  / r.pvDaily * 100, 100);
+  const wastePct   = Math.min(r.pvWaste       / r.pvDaily * 100, 100);
+
+  return `
+  <div class="result-grid">
+    <div class="result-card highlight">
+      <div class="rc-label">Công suất PV</div>
+      <div class="rc-value">${f1(kwp)}<span class="rc-unit">kWp</span></div>
+      <div class="rc-note">→ ${f1(r.pvDaily)} kWh/ngày</div>
+    </div>
+    <div class="result-card sun">
+      <div class="rc-label">Inverter Hybrid</div>
+      <div class="rc-value">${f1(r.invKw)}<span class="rc-unit">kW</span></div>
+      <div class="rc-note">DC/AC ratio 1.1 · min 3 kW</div>
+    </div>
+    <div class="result-card green-card">
+      <div class="rc-label">Pin lưu trữ</div>
+      <div class="rc-value">${f1(r.battRounded)}<span class="rc-unit">kWh</span></div>
+      <div class="rc-note">Xả được ${f1(r.battRounded * r.DOD)} kWh (DoD 90%)</div>
+    </div>
+    <div class="result-card">
+      <div class="rc-label">Tải ban đêm</div>
+      <div class="rc-value">${f1(r.nightLoad)}<span class="rc-unit">kWh</span></div>
+      <div class="rc-note">Pin bù ${f0(battCoverPct)}% tải đêm</div>
+    </div>
+    <div class="result-card ${r.gridNeeded > 0.5 ? '' : 'green-card'}">
+      <div class="rc-label">Cần lưới / đêm</div>
+      <div class="rc-value">${f1(r.gridNeeded)}<span class="rc-unit">kWh</span></div>
+      <div class="rc-note">EVN bù phần pin chưa đủ</div>
+    </div>
+    <div class="result-card ${surplusLabel}">
+      <div class="rc-label">PV thừa / ngày</div>
+      <div class="rc-value">${f1(r.pvWaste)}<span class="rc-unit">kWh</span></div>
+      <div class="rc-note">Phát lưới hoặc lãng phí</div>
+    </div>
+  </div>
+
+  <div class="flow-section">
+    <div class="flow-label">
+      <span>Phân bổ sản lượng PV (${f1(r.pvDaily)} kWh/ngày)</span>
+    </div>
+    <div class="flow-bar">
+      <div class="fb-load"    style="width:${loadPct}%"   title="Tải ban ngày ${f1(r.dayLoad)} kWh"></div>
+      <div class="fb-charge"  style="width:${chargePct}%" title="Nạp pin ${f1(r.actualCharge)} kWh"></div>
+      <div class="fb-surplus" style="width:${wastePct}%"  title="Dư / lãng phí ${f1(r.pvWaste)} kWh"></div>
+    </div>
+    <div class="flow-legend">
+      <span class="fl-item"><span class="fl-dot" style="background:var(--sky)"></span>Tải ban ngày (${f1(r.dayLoad)} kWh)</span>
+      <span class="fl-item"><span class="fl-dot" style="background:var(--green)"></span>Nạp pin (${f1(r.actualCharge)} kWh)</span>
+      <span class="fl-item"><span class="fl-dot" style="background:var(--red);opacity:.7"></span>Thừa / phát lưới (${f1(r.pvWaste)} kWh)</span>
+    </div>
+  </div>
+  ${statusBox}`;
+}
+
+// ─── Cost section ─────────────────────────────────────────────────────────────
+function renderCost(kwp1, r1, kwp2, r2, inp) {
+
+  function costOf(kwp, r) {
+    // Giá thực tế thị trường VN 2025–2026 (tham chiếu báo giá Việt Nam Solar)
+    // Tấm pin + khung + cáp DC + công lắp pin ≈ 6 tr/kWp
+    const pvCost   = kwp * 6_000_000;
+    // Inverter hybrid (Solis / Sungrow / Huawei) ≈ 4.5 tr/kW
+    const invCost  = r.invKw * 4_500_000;
+    // Pin LFP (Pylontech / BYD / Sungrow) ≈ 3 tr/kWh
+    const battCost = r.battRounded * 3_000_000;
+    // Phần cố định: tủ điện hybrid, cáp AC, tiếp địa, phụ kiện, vận chuyển, thi công AC, monitoring
+    const miscCost = 28_000_000;
+    const total    = pvCost + battCost + invCost + miscCost;
+
+    const savedKwh = r.dayLoad + r.battDischarge;
+    const savedMon = savedKwh * 30 * inp.tariff;
+    const payback  = total / (savedMon * 12);
+
+    return { pvCost, battCost, invCost, miscCost, total, savedKwh, savedMon, payback };
+  }
+
+  const c1 = costOf(kwp1, r1);
+  const c2 = costOf(kwp2, r2);
+
+  function tableHtml(kwp, r, c, label) {
+    return `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text-mid);margin-bottom:8px;">${label}</div>
+      <table class="cost-table">
+        <tr><td>Tấm pin PV trọn gói<span class="muted"> (${f1(kwp)} kWp × 6 tr · tấm pin + khung + cáp DC + công lắp)</span></td><td>${fCur(c.pvCost)} VND</td></tr>
+        <tr><td>Inverter hybrid<span class="muted"> (${f1(r.invKw)} kW × 4.5 tr/kW)</span></td><td>${fCur(c.invCost)} VND</td></tr>
+        <tr><td>Pin LFP<span class="muted"> (${f1(r.battRounded)} kWh × 3 tr/kWh)</span></td><td>${fCur(c.battCost)} VND</td></tr>
+        <tr><td>Phần cố định<span class="muted"> (tủ điện hybrid, cáp AC, tiếp địa, phụ kiện, vận chuyển, thi công AC)</span></td><td>${fCur(c.miscCost)} VND</td></tr>
+        <tr><td><b>Tổng đầu tư ước tính (incl. VAT 8%)</b></td><td><b>${fCur(c.total)} VND</b></td></tr>
+      </table>
+      <div class="payback-grid">
+        <div class="payback-card">
+          <div class="payback-num">${f1(c.savedKwh)}</div>
+          <div class="payback-lbl">kWh tiết kiệm / ngày</div>
+        </div>
+        <div class="payback-card">
+          <div class="payback-num">${fCur(c.savedMon)}</div>
+          <div class="payback-lbl">VND tiết kiệm / tháng</div>
+        </div>
+        <div class="payback-card">
+          <div class="payback-num">${f1(c.payback)}</div>
+          <div class="payback-lbl">Năm hoàn vốn</div>
+        </div>
+        <div class="payback-card">
+          <div class="payback-num">25–30</div>
+          <div class="payback-lbl">Năm tuổi thọ hệ thống</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  return `
+    ${tableHtml(kwp1, r1, c1, `Phương án 1 — Sizing tự động (${f1(kwp1)} kWp · ${f1(r1.invKw)} kW · ${f1(r1.battRounded)} kWh)`)}
+    <hr class="divider">
+    ${tableHtml(kwp2, r2, c2, `Phương án 2 — kWp tùy chọn (${f1(kwp2)} kWp · ${f1(r2.invKw)} kW · ${f1(r2.battRounded)} kWh)`)}
+    <div class="info-box" style="margin-top:0">ℹ️ Đơn giá tham chiếu thực tế VN 2025–2026: Tấm pin + khung + công ~6 tr/kWp · Inverter hybrid ~4.5 tr/kW · Pin LFP ~3 tr/kWh · Phần cố định ~28 tr. Giá Aiko ABC cao cấp hơn ~15–20% so với Jinko/LONGi TOPCon thông thường.</div>`;
+}
+
+// ─── Main recalc ──────────────────────────────────────────────────────────────
+function recalcAll() {
+  const inp  = getInputs();
+
+  // Phần 1 — tự động
+  const kwp1 = optimalKwp(inp);
+  const r1   = calcSystem(kwp1, inp);
+  r1.daily = inp.daily;
+  document.getElementById('result1').innerHTML =
+    `<div class="card-title"><span class="badge">KẾT QUẢ TỐI ƯU</span> mức dự phòng ${reservePct}%</div>` +
+    renderResultCards(r1, kwp1);
+
+  // Phần 2 — manual kWp + optional manual battery
+  const kwp2      = parseFloat(document.getElementById('manual_kwp').value) || 10;
+  const battInput = document.getElementById('manual_batt');
+  const battTag   = document.getElementById('batt_auto_tag');
+  const battHint  = document.getElementById('batt_hint');
+
+  // Tính giá trị auto theo kWp vừa nhập (dùng calcSystem không override)
+  const rAuto     = calcSystem(kwp2, inp);
+  const autoVal   = rAuto.battAuto;  // kWh tự động
+
+  // Nếu người dùng xóa trắng hoặc chưa nhập → dùng auto, ghi lại placeholder
+  const rawBatt   = battInput.value.trim();
+  let   battOverride = null;
+  let   isManual  = false;
+
+  if (rawBatt === '' || rawBatt === '0') {
+    // Fallback: điền lại giá trị auto vào field
+    battInput.value = autoVal;
+    battOverride    = null;
+    isManual        = false;
+  } else {
+    const parsed = parseFloat(rawBatt);
+    if (!isNaN(parsed) && parsed > 0 && parsed !== autoVal) {
+      battOverride = parsed;
+      isManual     = true;
+    }
+  }
+
+  // Cập nhật tag và hint
+  if (isManual) {
+    battTag.textContent = '(tùy chỉnh)';
+    battTag.style.color = 'var(--sun)';
+    const diff = parseFloat(battInput.value) - autoVal;
+    battHint.textContent = `Hệ thống tự tính: ${f1(autoVal)} kWh · Bạn ${diff > 0 ? 'tăng thêm' : 'giảm'} ${f1(Math.abs(diff))} kWh so với tối ưu`;
+    battHint.style.color = diff < -0.4 ? '#C62828' : 'var(--text-soft)';
+  } else {
+    battTag.textContent = '(tự động)';
+    battTag.style.color = 'var(--sky)';
+    battHint.textContent = `Tự động tính theo tải ban đêm: ${f1(autoVal)} kWh`;
+    battHint.style.color = 'var(--text-soft)';
+  }
+
+  const r2 = calcSystem(kwp2, inp, battOverride);
+  r2.daily = inp.daily;
+  document.getElementById('result2').innerHTML =
+    `<div class="card-title"><span class="badge blue">KẾT QUẢ</span> với ${f1(kwp2)} kWp · ${f1(r2.battRounded)} kWh pin</div>` +
+    renderResultCards(r2, kwp2);
+
+  // Cost
+  document.getElementById('cost_card').innerHTML =
+    `<div class="card-title"><span class="badge green">CHI PHÍ & HOÀN VỐN</span></div>` +
+    renderCost(kwp1, r1, kwp2, r2, inp);
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+['daily_load','sun_hours','system_eff','tariff'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateSplit);
+});
+document.getElementById('day_pct').addEventListener('input', updateSplit);
+document.getElementById('manual_kwp').addEventListener('input', () => {
+  // Khi thay đổi kWp: reset battery về auto để tránh giữ giá trị cũ lạc lõng
+  document.getElementById('manual_batt').value = '';
+  recalcAll();
+});
+document.getElementById('manual_batt').addEventListener('input', recalcAll);
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+updateSplit();
+</script>
+</body>
+</html>
