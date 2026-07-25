@@ -13,6 +13,10 @@
     --text:    #0f172a;
     --text-dim:#64748b;
     --accent:  #2a78d6;
+    --overlay: rgba(15, 23, 42, 0.45);
+    --glow-1:  rgba(249, 115, 22, 0.30);  /* cam hoàng hôn */
+    --glow-2:  rgba(245, 158, 11, 0.26);  /* vàng nắng */
+    --glow-3:  rgba(251, 113, 133, 0.22); /* hồng nhạt */
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -23,6 +27,10 @@
       --text:    #ffffff;
       --text-dim:#94a3b8;
       --accent:  #3987e5;
+      --overlay: rgba(0, 0, 0, 0.6);
+      --glow-1:  rgba(249, 115, 22, 0.30);
+      --glow-2:  rgba(245, 158, 11, 0.24);
+      --glow-3:  rgba(251, 113, 133, 0.18);
     }
   }
   :root[data-theme="dark"] {
@@ -33,6 +41,10 @@
     --text:    #ffffff;
     --text-dim:#94a3b8;
     --accent:  #3987e5;
+    --overlay: rgba(0, 0, 0, 0.6);
+    --glow-1:  rgba(249, 115, 22, 0.30);
+    --glow-2:  rgba(245, 158, 11, 0.24);
+    --glow-3:  rgba(251, 113, 133, 0.18);
   }
 
   * { box-sizing: border-box; }
@@ -47,42 +59,223 @@
     display: flex;
     flex-direction: column;
   }
+
+  /* ---------- Header ---------- */
   header {
-    padding: 0.75rem clamp(0.75rem, 4vw, 1.5rem) 0;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem clamp(0.75rem, 4vw, 1.5rem);
     background: var(--surface);
     border-bottom: 1px solid var(--border);
   }
-  h1 {
-    margin: 0 0 0.6rem 0;
-    font-size: clamp(1.05rem, 3.2vw, 1.3rem);
-  }
-  nav.tabs {
-    display: flex;
-    gap: 0.4rem;
-    overflow-x: auto;
-  }
-  nav.tabs button {
-    flex: 0 0 auto;
+  #menuBtn {
     appearance: none;
     border: 1px solid var(--border);
-    border-bottom: none;
     background: var(--bg);
-    color: var(--text-dim);
-    padding: 0.55rem 0.9rem;
-    border-radius: 0.5rem 0.5rem 0 0;
-    font-size: 0.9rem;
-    cursor: pointer;
-  }
-  nav.tabs button.active {
-    background: var(--surface);
     color: var(--text);
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.5rem;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .header-titles {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .app-name {
+    font-size: clamp(0.95rem, 3vw, 1.1rem);
     font-weight: 600;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+  }
+  #currentTool {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------- Menu overlay ---------- */
+  #menuOverlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    display: none;
+    z-index: 20;
+  }
+  #menuOverlay.open { display: block; }
+  #menuPanel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(340px, 88vw);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.18s ease-out;
+  }
+  #menuOverlay.open #menuPanel {
+    transform: translateX(0);
+  }
+  .menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  #closeMenuBtn {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+  }
+  #toolList {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    overflow-y: auto;
+  }
+  #toolList li + li { margin-top: 0.35rem; }
+  #toolList button {
+    width: 100%;
+    text-align: left;
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    cursor: pointer;
+    display: flex;
+    gap: 0.65rem;
+  }
+  #toolList button:hover,
+  #toolList button:focus-visible {
+    background: var(--bg);
     border-color: var(--border);
   }
+  #toolList button.active {
+    background: var(--bg);
+    border-color: var(--accent);
+  }
+  .tool-icon {
+    font-size: 1.3rem;
+    flex: 0 0 auto;
+  }
+  .tool-text { min-width: 0; }
+  .tool-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+  .tool-desc {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 0.1rem;
+  }
+  #menuEmpty {
+    padding: 1rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  /* ---------- Main content ---------- */
   main {
     flex: 1;
     min-height: 0;
     position: relative;
+  }
+  #welcome {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: clamp(1.25rem, 5vw, 3rem) clamp(1rem, 5vw, 2rem) 2rem;
+  }
+  #welcome.hidden { display: none; }
+  .bg-glow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(50% 50% at 12% 8%,  var(--glow-1) 0%, transparent 70%),
+      radial-gradient(45% 45% at 88% 22%, var(--glow-2) 0%, transparent 70%),
+      radial-gradient(55% 55% at 35% 95%, var(--glow-3) 0%, transparent 70%);
+  }
+  .hero, #toolGrid, #gridEmpty {
+    position: relative;
+    z-index: 1;
+  }
+  .hero {
+    text-align: center;
+    max-width: 40rem;
+    margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+  }
+  .hero-icon { font-size: 2.4rem; line-height: 1; }
+  .hero h2 {
+    margin: 0.5rem 0 0.35rem;
+    font-size: clamp(1.3rem, 4vw, 1.7rem);
+  }
+  .hero p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  #toolGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.9rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    text-align: left;
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 0.9rem;
+    padding: 1.1rem 1.15rem;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .tool-card:hover,
+  .tool-card:focus-visible {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .tool-card .tool-icon { font-size: 1.8rem; }
+  .tool-card .tool-title { font-size: 1rem; font-weight: 600; }
+  .tool-card .tool-desc { font-size: 0.85rem; color: var(--text-dim); }
+  #gridEmpty {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
   }
   main iframe {
     position: absolute;
@@ -101,29 +294,172 @@
 <body>
 
 <header>
-  <h1>Bộ công cụ O&amp;M Solar</h1>
-  <nav class="tabs">
-    <button type="button" class="active" data-target="frame-cosphi">Cosφ &amp; Công suất phản kháng</button>
-    <button type="button" data-target="frame-doNghieng">Chuyển đổi độ nghiêng mái</button>
-  </nav>
+  <button id="menuBtn" type="button" aria-label="Mở menu công cụ">☰</button>
+  <div class="header-titles">
+    <button id="homeBtn" type="button" class="app-name">Bộ công cụ O&amp;M Solar</button>
+    <div id="currentTool">Trang chủ</div>
+  </div>
 </header>
 
+<div id="menuOverlay">
+  <div id="menuPanel">
+    <div class="menu-header">
+      <span>Danh sách công cụ</span>
+      <button id="closeMenuBtn" type="button" aria-label="Đóng menu">✕</button>
+    </div>
+    <ul id="toolList"></ul>
+    <div id="menuEmpty" hidden>Chưa có công cụ nào trong danh mục.</div>
+  </div>
+</div>
+
 <main>
-  <iframe id="frame-cosphi" class="active" src="cosphi.html" title="Công cụ tính Cosφ &amp; Công suất phản kháng"></iframe>
-  <iframe id="frame-doNghieng" src="Convert_degrees_percentage..html" title="Chuyển đổi Độ nghiêng mái"></iframe>
+  <div id="welcome">
+    <div class="bg-glow" aria-hidden="true"></div>
+    <div class="hero">
+      <div class="hero-icon">☀️</div>
+      <h2>Bộ công cụ O&amp;M Solar</h2>
+      <p>Tiện ích tính toán nhanh cho kỹ sư vận hành &amp; bảo trì điện mặt trời. Chọn công cụ bên dưới để bắt đầu.</p>
+    </div>
+    <div id="toolGrid"></div>
+    <p id="gridEmpty" hidden>Chưa có công cụ nào trong danh mục.</p>
+  </div>
 </main>
 
 <script>
-  const buttons = document.querySelectorAll('nav.tabs button');
-  const frames = document.querySelectorAll('main iframe');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      buttons.forEach(b => b.classList.remove('active'));
-      frames.forEach(f => f.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.target).classList.add('active');
+  /* ============================================================
+     DANH MỤC TOOL — sửa ở đây mỗi khi thêm tool mới.
+     Thêm 1 object vào mảng bên dưới, KHÔNG cần sửa gì khác trong file này.
+     Trường:
+       id          : mã ngắn, duy nhất, không dấu (vd "cosphi")
+       icon        : 1 emoji đại diện
+       title       : tên hiển thị trong menu
+       description : mô tả ngắn 1 dòng, hiện dưới tên trong menu
+       file        : tên file HTML của tool (đặt cùng thư mục với index.html)
+       added       : ngày thêm, dạng YYYY-MM-DD (chỉ để theo dõi, không hiển thị)
+     ============================================================ */
+  const TOOLS = [
+    {
+      id: "cosphi",
+      icon: "🔌",
+      title: "Cosφ & Công suất phản kháng",
+      description: "Tính hệ số công suất và công suất phản kháng cần bù",
+      file: "cosphi.html",
+      added: "2026-07-25"
+    },
+    {
+      id: "do-nghieng-mai",
+      icon: "📐",
+      title: "Chuyển đổi độ nghiêng mái",
+      description: "Quy đổi độ dốc mái giữa Độ (°) và Phần trăm (%)",
+      file: "Convert_degrees_percentage..html",
+      added: "2026-07-25"
+    }
+  ];
+
+  const menuOverlay   = document.getElementById('menuOverlay');
+  const menuBtn       = document.getElementById('menuBtn');
+  const closeMenuBtn  = document.getElementById('closeMenuBtn');
+  const homeBtn       = document.getElementById('homeBtn');
+  const toolListEl    = document.getElementById('toolList');
+  const menuEmptyEl   = document.getElementById('menuEmpty');
+  const toolGridEl    = document.getElementById('toolGrid');
+  const gridEmptyEl   = document.getElementById('gridEmpty');
+  const welcomeEl     = document.getElementById('welcome');
+  const currentToolEl = document.getElementById('currentTool');
+  const mainEl        = document.querySelector('main');
+
+  const loadedFrames = new Map(); // id -> iframe (lazy-loaded, giữ lại khi chuyển tool)
+  let activeToolId = null;
+
+  function toolButton(tool, className) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.dataset.id = tool.id;
+    btn.innerHTML =
+      '<span class="tool-icon">' + tool.icon + '</span>' +
+      '<span class="tool-text">' +
+        '<span class="tool-title">' + tool.title + '</span>' +
+        '<span class="tool-desc">' + tool.description + '</span>' +
+      '</span>';
+    btn.addEventListener('click', () => openTool(tool));
+    return btn;
+  }
+
+  function renderMenu() {
+    toolListEl.innerHTML = '';
+    menuEmptyEl.hidden = TOOLS.length > 0;
+    TOOLS.forEach(tool => {
+      const li = document.createElement('li');
+      li.appendChild(toolButton(tool, ''));
+      toolListEl.appendChild(li);
     });
+  }
+
+  function renderHome() {
+    toolGridEl.innerHTML = '';
+    gridEmptyEl.hidden = TOOLS.length > 0;
+    TOOLS.forEach(tool => {
+      toolGridEl.appendChild(toolButton(tool, 'tool-card'));
+    });
+  }
+
+  function goHome() {
+    if (activeToolId) {
+      const prev = loadedFrames.get(activeToolId);
+      if (prev) prev.classList.remove('active');
+    }
+    activeToolId = null;
+    currentToolEl.textContent = 'Trang chủ';
+    welcomeEl.classList.remove('hidden');
+    toolListEl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    closeMenu();
+  }
+
+  function openTool(tool) {
+    // ẩn tool đang hiện (nếu có)
+    if (activeToolId) {
+      const prev = loadedFrames.get(activeToolId);
+      if (prev) prev.classList.remove('active');
+    }
+    welcomeEl.classList.add('hidden');
+
+    // tạo iframe lần đầu, tái sử dụng những lần sau
+    let frame = loadedFrames.get(tool.id);
+    if (!frame) {
+      frame = document.createElement('iframe');
+      frame.title = tool.title;
+      frame.src = tool.file;
+      mainEl.appendChild(frame);
+      loadedFrames.set(tool.id, frame);
+    }
+    frame.classList.add('active');
+
+    activeToolId = tool.id;
+    currentToolEl.textContent = tool.title;
+
+    toolListEl.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.id === tool.id);
+    });
+
+    closeMenu();
+  }
+
+  function openMenu()  { menuOverlay.classList.add('open'); }
+  function closeMenu() { menuOverlay.classList.remove('open'); }
+
+  menuBtn.addEventListener('click', openMenu);
+  closeMenuBtn.addEventListener('click', closeMenu);
+  homeBtn.addEventListener('click', goHome);
+  menuOverlay.addEventListener('click', (e) => {
+    if (e.target === menuOverlay) closeMenu();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu();
+  });
+
+  renderMenu();
+  renderHome();
 </script>
 
 </body>
