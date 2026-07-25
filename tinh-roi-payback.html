@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tính ROI & Thời gian hoàn vốn — Solar</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* lũy kế danh nghĩa */
+    --series-2:       #eb6834; /* lũy kế chiết khấu */
+    --good:           #0ca30c;
+    --critical:       #d03b3b;
+    --warning:        #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --good:           #0ca30c;
+      --critical:       #e66767;
+      --warning:        #fab219;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+  }
+  .app { max-width: 760px; margin: 0 auto; padding: clamp(1rem, 4vw, 2rem) clamp(0.9rem, 4vw, 1.5rem) 3rem; }
+
+  header.top h1 { font-size: clamp(1.2rem, 3.6vw, 1.5rem); margin: 0 0 6px; }
+  header.top p { color: var(--text-secondary); font-size: 13.5px; line-height: 1.55; margin: 0 0 4px; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-top: 14px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .card h2 .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--series-1); margin-right:8px; }
+
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+  @media (max-width: 480px) { .field-grid { grid-template-columns: 1fr; } }
+  .field label { display:block; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 4px; }
+  .field .row { display:flex; align-items:center; gap:6px; }
+  .field input {
+    width: 100%; font-size: 14px; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--page-plane); color: var(--text-primary);
+  }
+  .field input:focus { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .field .unit { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .field .hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  details.card summary { cursor: pointer; font-size: 14px; font-weight: 600; list-style: none; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary::before { content: "▸ "; color: var(--muted); }
+  details.card[open] summary::before { content: "▾ "; }
+  details.card .field-grid { margin-top: 14px; }
+
+  .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (max-width: 480px) { .result-grid { grid-template-columns: 1fr; } }
+  .result-tile {
+    background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .result-tile .label { font-size: 12px; color: var(--text-secondary); }
+  .result-tile .value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .result-tile .value.warn { color: var(--critical); font-size: 14px; font-weight: 600; }
+
+  .legend { display:flex; gap: 16px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 8px; }
+  .legend .key { display:flex; align-items:center; gap:6px; }
+  .legend .swatch { width:10px; height:10px; border-radius:2px; display:inline-block; }
+
+  .chart-container { position: relative; margin-top: 4px; }
+  .chart-svg { width: 100%; height: auto; display:block; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axislabel { fill: var(--muted); font-size: 10px; }
+  .baseline-l { stroke: var(--baseline); stroke-width: 1; }
+  .chart-line-1 { fill:none; stroke: var(--series-1); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .chart-line-2 { fill:none; stroke: var(--series-2); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .marker-1 { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; cursor: pointer; }
+  .marker-2 { fill: var(--series-2); stroke: var(--surface-1); stroke-width: 2; cursor: pointer; }
+  .payback-line { stroke: var(--good); stroke-width: 1.5; }
+  .payback-label { fill: var(--good); font-size: 10.5px; font-weight: 600; }
+  .chart-tooltip {
+    position: absolute; display: none; background: var(--text-primary); color: var(--surface-1);
+    font-size: 12px; padding: 4px 9px; border-radius: 6px; pointer-events: none; white-space: nowrap; z-index: 5;
+  }
+
+  table.cf-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+  table.cf-table th, table.cf-table td {
+    padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  table.cf-table th:first-child, table.cf-table td:first-child { text-align: left; }
+  table.cf-table thead th { color: var(--text-secondary); font-weight: 600; }
+  table.cf-table tbody tr.payback-row td { color: var(--good); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+
+  footer.appfoot { margin-top: 20px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <h1>📈 Tính ROI &amp; Thời gian hoàn vốn (Payback)</h1>
+    <p>Ước tính nhanh hiệu quả đầu tư hệ điện mặt trời từ vốn đầu tư và tiền điện tiết kiệm được. Chạy hoàn toàn offline, không lưu dữ liệu.</p>
+  </header>
+
+  <div class="card">
+    <h2><span class="dot"></span>Thông tin đầu tư</h2>
+    <div class="field-grid">
+      <div class="field">
+        <label for="capex">Vốn đầu tư ban đầu</label>
+        <div class="row">
+          <input type="text" inputmode="numeric" id="capex" value="200.000.000">
+          <span class="unit">VNĐ</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="saving1">Tiết kiệm tiền điện tháng đầu</label>
+        <div class="row">
+          <input type="text" inputmode="numeric" id="saving1" value="3.000.000">
+          <span class="unit">VNĐ/tháng</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="esc">Trượt giá điện dự kiến</label>
+        <div class="row">
+          <input type="number" id="esc" value="3" step="0.1" min="-20" max="20">
+          <span class="unit">%/năm</span>
+        </div>
+        <div class="hint">Gợi ý tham khảo — thay bằng mức thực tế bạn kỳ vọng.</div>
+      </div>
+      <div class="field">
+        <label for="years">Số năm phân tích</label>
+        <div class="row">
+          <input type="number" id="years" value="20" min="1" max="30" step="1">
+          <span class="unit">năm</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details class="card" id="advBox">
+    <summary>Nâng cao (tuỳ chọn)</summary>
+    <div class="field-grid">
+      <div class="field">
+        <label for="degr">Suy giảm sản lượng PV</label>
+        <div class="row">
+          <input type="number" id="degr" value="0.5" step="0.1" min="0" max="5">
+          <span class="unit">%/năm</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="om">Chi phí O&amp;M ước tính</label>
+        <div class="row">
+          <input type="text" inputmode="numeric" id="om" value="0">
+          <span class="unit">VNĐ/năm</span>
+        </div>
+        <div class="hint">Vệ sinh, bảo trì, giám sát... (không trượt giá).</div>
+      </div>
+      <div class="field">
+        <label for="bigYear">Thay thế lớn — vào năm thứ</label>
+        <div class="row">
+          <input type="number" id="bigYear" value="0" min="0" max="30" step="1">
+        </div>
+        <div class="hint">VD thay inverter. Để 0 nếu không tính.</div>
+      </div>
+      <div class="field">
+        <label for="bigAmount">Thay thế lớn — chi phí</label>
+        <div class="row">
+          <input type="text" inputmode="numeric" id="bigAmount" value="0">
+          <span class="unit">VNĐ</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="discRate">Tỷ lệ chiết khấu (WACC)</label>
+        <div class="row">
+          <input type="number" id="discRate" value="" step="0.1" min="0" max="30" placeholder="Để trống nếu không cần">
+          <span class="unit">%/năm</span>
+        </div>
+        <div class="hint">Nhập để tính thêm NPV &amp; payback có chiết khấu.</div>
+      </div>
+    </div>
+  </details>
+
+  <div class="card">
+    <h2><span class="dot"></span>Kết quả</h2>
+    <div class="result-grid" id="resultGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span>Dòng tiền lũy kế theo năm</h2>
+    <div class="legend" id="chartLegend" hidden>
+      <span class="key"><span class="swatch" style="background:var(--series-1)"></span>Lũy kế danh nghĩa</span>
+      <span class="key"><span class="swatch" style="background:var(--series-2)"></span>Lũy kế chiết khấu</span>
+    </div>
+    <div class="chart-container">
+      <div id="cfChart"></div>
+    </div>
+  </div>
+
+  <details class="card">
+    <summary>Bảng dòng tiền chi tiết theo năm</summary>
+    <div class="table-wrap">
+      <table class="cf-table" id="cfTable"></table>
+    </div>
+  </details>
+
+  <footer class="appfoot">
+    Công cụ ước tính nhanh, mang tính tham khảo — dựa trên các giả định bạn tự nhập.<br>
+    Không thay thế phân tích đầu tư đầy đủ (NPV/IRR/DSCR, kịch bản rủi ro P50/P75) và không phải tư vấn đầu tư.
+  </footer>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  function parseVND(str){
+    const n = Number(String(str).replace(/[^\d-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+  function formatVNDInput(el){
+    const digits = el.value.replace(/[^\d]/g, '');
+    el.value = digits ? Number(digits).toLocaleString('vi-VN') : '';
+  }
+  ['capex','saving1','om','bigAmount'].forEach(id => {
+    const el = $(id);
+    el.addEventListener('input', () => { formatVNDInput(el); recalc(); });
+  });
+  ['esc','years','degr','bigYear','discRate'].forEach(id => {
+    $(id).addEventListener('input', recalc);
+  });
+  $('advBox').addEventListener('toggle', recalc);
+
+  function fmtVND(n){ return Math.round(n).toLocaleString('vi-VN') + ' đ'; }
+  function fmtTrieu(n){ return (n/1e6).toLocaleString('vi-VN', {maximumFractionDigits:1, minimumFractionDigits:1}) + ' tr'; }
+  function fmtPct(n){ return (n*100).toLocaleString('vi-VN', {maximumFractionDigits:1, minimumFractionDigits:1}) + '%'; }
+
+  function buildCashflow(N, netFn, rate){
+    // cum[0] = -CAPEX moc mốc năm 0, cum[n] = cum[n-1] + net(n)
+    const cum = [ -CAPEXglobal ];
+    const nets = [0];
+    for(let n = 1; n <= N; n++){
+      const net = netFn(n);
+      nets.push(net);
+      const disc = rate ? net / Math.pow(1 + rate, n) : net;
+      cum.push(cum[n-1] + disc);
+    }
+    return { cum, nets };
+  }
+
+  function findPayback(cum){
+    for(let n = 1; n < cum.length; n++){
+      if(cum[n] >= 0 && cum[n-1] < 0){
+        const frac = -cum[n-1] / (cum[n] - cum[n-1]);
+        return (n - 1) + frac;
+      }
+    }
+    return cum[cum.length-1] >= 0 ? 0 : null;
+  }
+
+  function fmtYearsMonths(y){
+    if(y === null) return null;
+    const years = Math.floor(y);
+    const months = Math.round((y - years) * 12);
+    if(months === 12) return (years+1) + ' năm';
+    return years + ' năm' + (months > 0 ? ' ' + months + ' tháng' : '');
+  }
+
+  let CAPEXglobal = 0;
+
+  function recalc(){
+    const CAPEX = parseVND($('capex').value);
+    CAPEXglobal = CAPEX;
+    const S1 = parseVND($('saving1').value);
+    const esc = Number($('esc').value) / 100 || 0;
+    const N = Math.max(1, Math.min(30, Number($('years').value) || 20));
+    const degr = Number($('degr').value) / 100 || 0;
+    const om = parseVND($('om').value);
+    const bigYear = Number($('bigYear').value) || 0;
+    const bigAmount = parseVND($('bigAmount').value);
+    const discInput = $('discRate').value;
+    const hasDisc = discInput !== '';
+    const r = hasDisc ? Number(discInput) / 100 : 0;
+
+    const netFn = n => {
+      const savings = S1 * 12 * Math.pow(1+esc, n-1) * Math.pow(1-degr, n-1);
+      const big = (n === bigYear) ? bigAmount : 0;
+      return savings - om - big;
+    };
+
+    const nominal = buildCashflow(N, netFn, 0);
+    const discounted = hasDisc ? buildCashflow(N, netFn, r) : null;
+
+    const paybackSimple = findPayback(nominal.cum);
+    const paybackDisc = discounted ? findPayback(discounted.cum) : null;
+    const roiTotal = CAPEX > 0 ? nominal.cum[N] / CAPEX : 0;
+    const roiAnnual = (1 + roiTotal) > 0 ? Math.pow(1 + roiTotal, 1/N) - 1 : null;
+    const npv = discounted ? discounted.cum[N] : null;
+
+    renderResults({paybackSimple, paybackDisc, roiTotal, roiAnnual, npv, hasDisc});
+    renderChart(nominal.cum, discounted ? discounted.cum : null, paybackSimple, paybackDisc);
+    renderTable(nominal, discounted, paybackSimple, paybackDisc);
+  }
+
+  function renderResults(r){
+    const tiles = [];
+    tiles.push({label:'Payback đơn giản (chưa chiết khấu)', value: r.paybackSimple===null ? 'Chưa hoàn vốn trong kỳ' : fmtYearsMonths(r.paybackSimple), warn: r.paybackSimple===null});
+    tiles.push({label:'ROI tổng sau cả kỳ', value: fmtPct(r.roiTotal)});
+    tiles.push({label:'ROI bình quân/năm', value: r.roiAnnual===null ? '—' : fmtPct(r.roiAnnual)});
+    if(r.hasDisc){
+      tiles.push({label:'Payback có chiết khấu', value: r.paybackDisc===null ? 'Chưa hoàn vốn trong kỳ' : fmtYearsMonths(r.paybackDisc), warn: r.paybackDisc===null});
+      tiles.push({label:'NPV (giá trị hiện tại ròng)', value: fmtTrieu(r.npv) + ' đ', warn: r.npv < 0});
+    }
+    $('resultGrid').innerHTML = tiles.map(t =>
+      '<div class="result-tile"><div class="label">'+t.label+'</div><div class="value'+(t.warn?' warn':'')+'">'+t.value+'</div></div>'
+    ).join('');
+  }
+
+  function renderChart(cumNominal, cumDisc, paybackSimple, paybackDisc){
+    $('chartLegend').hidden = !cumDisc;
+    const el = $('cfChart');
+    const N = cumNominal.length - 1;
+    const W = 680, H = 280, ML = 60, MR = 16, MT = 16, MB = 30;
+    const innerW = W - ML - MR, innerH = H - MT - MB;
+
+    const allVals = cumDisc ? cumNominal.concat(cumDisc) : cumNominal;
+    let yMin = Math.min(0, ...allVals), yMax = Math.max(0, ...allVals);
+    if(yMin === yMax){ yMin -= 1; yMax += 1; }
+    const pad = (yMax - yMin) * 0.12;
+    yMin -= pad; yMax += pad;
+
+    const xScale = n => ML + (N === 0 ? innerW/2 : n/N * innerW);
+    const yScale = y => MT + innerH - (y - yMin)/(yMax - yMin) * innerH;
+    const zeroY = yScale(0);
+
+    function linePoints(cum, cls){
+      return cum.map((y,n) => xScale(n)+','+yScale(y)).join(' ');
+    }
+    function markers(cum, cls){
+      let s = '';
+      cum.forEach((y,n) => { s += '<circle cx="'+xScale(n)+'" cy="'+yScale(y)+'" r="4" class="'+cls+'" data-n="'+n+'"/>'; });
+      return s;
+    }
+
+    let gridlines = '';
+    const ticks = 5;
+    for(let i = 0; i <= ticks; i++){
+      const val = yMin + (yMax - yMin) * i / ticks;
+      const y = yScale(val);
+      gridlines += '<line x1="'+ML+'" y1="'+y+'" x2="'+(W-MR)+'" y2="'+y+'" class="gridline"/>';
+      gridlines += '<text x="'+(ML-8)+'" y="'+(y+4)+'" class="axislabel" text-anchor="end">'+ (val/1e6).toLocaleString('vi-VN',{maximumFractionDigits:0}) +'tr</text>';
+    }
+    let xlabels = '';
+    const xStep = Math.max(1, Math.round(N/8));
+    for(let n = 0; n <= N; n += xStep){
+      xlabels += '<text x="'+xScale(n)+'" y="'+(H-MB+18)+'" class="axislabel" text-anchor="middle">'+n+'</text>';
+    }
+    if(N % xStep !== 0){
+      xlabels += '<text x="'+xScale(N)+'" y="'+(H-MB+18)+'" class="axislabel" text-anchor="middle">'+N+'</text>';
+    }
+
+    let paybackMark = '';
+    const pb = paybackDisc !== null && paybackDisc !== undefined ? paybackDisc : paybackSimple;
+    if(pb !== null && pb !== undefined && pb <= N){
+      const px = xScale(pb);
+      paybackMark = '<line x1="'+px+'" y1="'+MT+'" x2="'+px+'" y2="'+(H-MB)+'" class="payback-line"/>' +
+        '<text x="'+(px+4)+'" y="'+(MT+12)+'" class="payback-label">Hoàn vốn</text>';
+    }
+
+    el.innerHTML =
+      '<svg viewBox="0 0 '+W+' '+H+'" class="chart-svg">' +
+        gridlines +
+        '<line x1="'+ML+'" y1="'+zeroY+'" x2="'+(W-MR)+'" y2="'+zeroY+'" class="baseline-l"/>' +
+        paybackMark +
+        '<polyline points="'+linePoints(cumNominal)+'" class="chart-line-1"/>' +
+        (cumDisc ? '<polyline points="'+linePoints(cumDisc)+'" class="chart-line-2"/>' : '') +
+        markers(cumNominal, 'marker-1') +
+        (cumDisc ? markers(cumDisc, 'marker-2') : '') +
+        xlabels +
+      '</svg>' +
+      '<div class="chart-tooltip" id="cfChart_tt"></div>';
+
+    const tt = $('cfChart_tt');
+    el.querySelectorAll('circle').forEach(m => {
+      m.addEventListener('mouseenter', () => {
+        const n = Number(m.dataset.n);
+        const isDisc = m.classList.contains('marker-2');
+        const val = isDisc ? cumDisc[n] : cumNominal[n];
+        tt.style.display = 'block';
+        tt.textContent = 'Năm ' + n + (isDisc ? ' (chiết khấu)' : '') + ': ' + fmtTrieu(val) + ' đ';
+        const rect = m.getBoundingClientRect();
+        const parentRect = el.getBoundingClientRect();
+        tt.style.left = (rect.left - parentRect.left + 10) + 'px';
+        tt.style.top = (rect.top - parentRect.top - 28) + 'px';
+      });
+      m.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+    });
+  }
+
+  function renderTable(nominal, discounted, paybackSimple, paybackDisc){
+    const N = nominal.cum.length - 1;
+    const pbYearSimple = paybackSimple===null ? null : Math.ceil(paybackSimple);
+    const pbYearDisc = paybackDisc===null ? null : Math.ceil(paybackDisc);
+    let head = '<thead><tr><th>Năm</th><th>Tiết kiệm/CF ròng</th><th>Lũy kế danh nghĩa</th>' +
+      (discounted ? '<th>Lũy kế chiết khấu</th>' : '') + '</tr></thead>';
+    let body = '<tbody>';
+    for(let n = 0; n <= N; n++){
+      const isPB = n === pbYearSimple || (discounted && n === pbYearDisc);
+      body += '<tr class="'+(isPB ? 'payback-row' : '')+'">' +
+        '<td>' + n + '</td>' +
+        '<td>' + (n===0 ? '—' : fmtTrieu(nominal.nets[n]) + ' đ') + '</td>' +
+        '<td>' + fmtTrieu(nominal.cum[n]) + ' đ</td>' +
+        (discounted ? '<td>' + fmtTrieu(discounted.cum[n]) + ' đ</td>' : '') +
+      '</tr>';
+    }
+    body += '</tbody>';
+    $('cfTable').innerHTML = head + body;
+  }
+
+  recalc();
+</script>
+
+</body>
+</html>
