@@ -110,6 +110,11 @@
   .seg input[type=radio]:checked + label { background: var(--series-1); color: #fff; }
   .seg + .seg { margin-left: 8px; }
 
+  /* Stacked variant for options whose label text is a full descriptive sentence
+     rather than a short 1-3 word value — a pill row squeezes/overflows on mobile. */
+  .seg.seg-vertical { display: flex; flex-direction: column; gap: 8px; border: none; border-radius: 0; overflow: visible; width: 100%; }
+  .seg.seg-vertical label { white-space: normal; border-radius: 8px; border: 1px solid var(--border); line-height: 1.4; }
+
   .hidden { display: none !important; }
 
   .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 10px; margin-top: 4px; }
@@ -594,7 +599,7 @@
       <p class="subtle">Nếu tụ bù được điều khiển tự động bởi relay theo dõi cosφ tại 1 CT, vị trí CT đó so với điểm hòa solar quyết định relay có "thấy" đúng Q_tải hay bị solar che. Tab này tính Q_cap ĐỘNG theo P_solar (thay vì hằng số nhập tay như Tab "Dung lượng tụ bù cần lắp"), theo đúng cơ chế relay tự vận hành — bỏ qua tổn hao Q_MBA và làm tròn theo nấc tụ (coi liên tục).</p>
 
       <h3>Vị trí CT tụ bù</h3>
-      <div class="seg" style="margin-bottom:8px;">
+      <div class="seg seg-vertical" style="margin-bottom:8px;">
         <input type="radio" name="t7ctpos" id="t7ctpos_before" value="before" checked><label for="t7ctpos_before">CT trước solar (bị solar che — phổ biến khi hết chỗ đấu nối)</label>
         <input type="radio" name="t7ctpos" id="t7ctpos_after" value="after"><label for="t7ctpos_after">CT sau solar (đúng thiết kế, không bị che)</label>
       </div>
