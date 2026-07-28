@@ -313,7 +313,7 @@
   };
   const ORDER=["dec","bin","oct","hex"];
   const opts={group:true,upper:false,prefix:false};
-  let active="dec", value=null;
+  let active="", value=null;   // empty so the first setActive('dec') runs fully
 
   const rowsEl=document.getElementById('rows');
   const hint=document.getElementById('hint');
