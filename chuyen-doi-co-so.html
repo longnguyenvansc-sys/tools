@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>Công cụ cơ số &amp; thanh ghi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#E7EBF0;--card:#FFFFFF;--panel:#12161D;--ink:#12161D;
+    --muted:#697588;--line:#D6DBE3;
+    --dec:#C4739C;--bin:#4FB286;--oct:#E0A458;--hex:#6C8AE4;
+    --accent:#3FB8C4;--danger:#D96C6C;
+    --radius:16px;--shadow:0 1px 2px rgba(18,22,29,.04),0 12px 32px -18px rgba(18,22,29,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:"Space Grotesk",system-ui,-apple-system,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 88% -12%, rgba(63,184,196,.12), transparent 60%),
+      radial-gradient(900px 520px at -12% 112%, rgba(108,138,228,.10), transparent 55%),
+      var(--ground);
+    color:var(--ink);min-height:100dvh;line-height:1.5;
+    padding:clamp(16px,4vw,48px);display:flex;justify-content:center;}
+  .wrap{width:100%;max-width:660px}
+
+  header{margin-bottom:clamp(16px,3.5vw,22px)}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);font-weight:500}
+  h1{font-size:clamp(24px,5.5vw,34px);font-weight:700;letter-spacing:-.02em;margin-top:6px;line-height:1.12}
+
+  /* tab bar */
+  .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:5px;margin-bottom:clamp(16px,3.5vw,22px);box-shadow:var(--shadow)}
+  .tab{flex:1;font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:600;
+    padding:11px 10px;border:none;border-radius:8px;background:transparent;color:var(--muted);
+    cursor:pointer;transition:background .15s,color .15s;display:flex;align-items:center;
+    justify-content:center;gap:8px}
+  .tab .badge{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:500;opacity:.7}
+  .tab:hover{color:var(--ink)}
+  .tab.active{background:var(--ink);color:#fff}
+  .tab.active .badge{opacity:.75}
+
+  .pane{display:none}
+  .pane.active{display:block}
+  .subtitle{color:var(--muted);font-size:15px;margin:-2px 0 18px;max-width:56ch}
+
+  /* ============ TAB 1 : base converter ============ */
+  .pane-convert .rows{display:flex;flex-direction:column;gap:12px}
+  .pane-convert .row{border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px 14px;
+    cursor:pointer;position:relative;background:var(--panel);border-left:4px solid var(--rc);
+    transition:transform .15s,box-shadow .15s}
+  .pane-convert .row[data-base=dec]{--rc:var(--dec)}
+  .pane-convert .row[data-base=bin]{--rc:var(--bin)}
+  .pane-convert .row[data-base=oct]{--rc:var(--oct)}
+  .pane-convert .row[data-base=hex]{--rc:var(--hex)}
+  .pane-convert .row:not(.active):hover{transform:translateY(-1px);
+    box-shadow:0 1px 2px rgba(18,22,29,.04),0 16px 34px -16px rgba(18,22,29,.4)}
+  .pane-convert .row.active{background:var(--card);cursor:default;border:1px solid var(--line);
+    border-left:4px solid var(--rc);outline:2px solid var(--rc);outline-offset:-1px}
+  .pane-convert .r-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .pane-convert .sel{display:inline-flex;align-items:center;gap:10px;background:none;border:none;
+    cursor:pointer;padding:0;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.13em;
+    text-transform:uppercase;font-weight:600;color:#8A94A6}
+  .pane-convert .row.active .sel{color:var(--rc)}
+  .pane-convert .dot{width:15px;height:15px;border-radius:50%;border:2px solid #48505F;flex:none;
+    display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s}
+  .pane-convert .row.active .dot{border-color:var(--rc)}
+  .pane-convert .row.active .dot::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--rc)}
+  .pane-convert .r-name{display:flex;align-items:center;gap:8px}
+  .pane-convert .r-base{font-size:11px;color:#8A94A6;background:rgba(255,255,255,.06);
+    padding:2px 7px;border-radius:6px;letter-spacing:0;font-weight:400}
+  .pane-convert .row.active .r-base{background:var(--ground);color:var(--muted)}
+  .pane-convert .copy{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#C4CCD9;
+    font-family:"JetBrains Mono",monospace;font-size:12px;padding:6px 10px;border-radius:8px;transition:.15s}
+  .pane-convert .copy:hover{background:rgba(255,255,255,.12);color:#fff}
+  .pane-convert .copy:active{transform:translateY(1px)}
+  .pane-convert .copy.done{color:var(--rc)}
+  .pane-convert .row.active .copy{background:var(--ground);border-color:var(--line);color:var(--muted)}
+  .pane-convert .row.active .copy:hover{color:var(--ink);background:#DDE2EA}
+  .pane-convert .copy:disabled{opacity:.35;cursor:not-allowed}
+  .pane-convert .val{width:100%;border:none;outline:none;background:transparent;
+    font-family:"JetBrains Mono",monospace;font-weight:600;word-break:break-all;
+    font-size:clamp(18px,4.6vw,23px);line-height:1.35;color:#EAEEF4;-webkit-text-fill-color:#EAEEF4;opacity:1}
+  .pane-convert .val:disabled{color:#EAEEF4;-webkit-text-fill-color:#EAEEF4}
+  .pane-convert .row.active .val{color:var(--ink);-webkit-text-fill-color:var(--ink);
+    font-size:clamp(26px,7vw,40px);font-weight:700;letter-spacing:-.01em}
+  .pane-convert .row.active .val.invalid{color:var(--danger);-webkit-text-fill-color:var(--danger)}
+  .pane-convert .val::placeholder{color:#3A4150}
+  .pane-convert .row.active .val::placeholder{color:var(--line)}
+  .pane-convert .hint{margin-top:12px;min-height:19px;font-size:13px;color:var(--muted);
+    font-family:"JetBrains Mono",monospace}
+  .pane-convert .hint.err{color:var(--danger)}
+  .pane-convert .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .pane-convert .chip{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:500;
+    padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);
+    color:var(--muted);cursor:pointer;transition:.15s}
+  .pane-convert .chip:hover{border-color:#B9C1CE;color:var(--ink)}
+  .pane-convert .chip:active{transform:translateY(1px)}
+  .pane-convert .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* ============ TAB 2 : modbus decoder ============ */
+  .pane-modbus .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:clamp(16px,3.5vw,22px);margin-bottom:14px}
+  .pane-modbus .card-label{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:12px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .pane-modbus .types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(max-width:460px){.pane-modbus .types{grid-template-columns:repeat(2,1fr)}}
+  .pane-modbus .type{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600;
+    padding:11px 8px;border-radius:10px;border:1px solid var(--line);background:var(--ground);
+    color:var(--muted);cursor:pointer;text-align:center;transition:.15s;line-height:1.25}
+  .pane-modbus .type small{display:block;font-weight:400;font-size:10.5px;margin-top:2px;opacity:.8}
+  .pane-modbus .type:hover{border-color:#B9C1CE;color:var(--ink)}
+  .pane-modbus .type.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .pane-modbus .type.on small{opacity:.7}
+  .pane-modbus .radix-toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .pane-modbus .radix-toggle button{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:500;
+    padding:5px 12px;border:none;background:var(--card);color:var(--muted);cursor:pointer}
+  .pane-modbus .radix-toggle button.on{background:var(--ink);color:#fff}
+  .pane-modbus .words{display:flex;gap:12px;flex-wrap:wrap}
+  .pane-modbus .word{flex:1;min-width:140px}
+  .pane-modbus .word .wl{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);
+    margin-bottom:6px;letter-spacing:.04em}
+  .pane-modbus .word .pfx{color:var(--accent);font-weight:600}
+  .pane-modbus .word input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    background:var(--ground);font-family:"JetBrains Mono",monospace;font-weight:600;
+    font-size:clamp(18px,4.5vw,22px);color:var(--ink);outline:none;transition:border-color .15s}
+  .pane-modbus .word input:focus{border-color:var(--accent);background:var(--card)}
+  .pane-modbus .word input.invalid{border-color:var(--danger);color:var(--danger)}
+  .pane-modbus .opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:460px){.pane-modbus .opt-grid{grid-template-columns:1fr}}
+  .pane-modbus .opt{display:flex;flex-direction:column;gap:6px}
+  .pane-modbus .opt .ol{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);letter-spacing:.04em}
+  .pane-modbus .opt select,.pane-modbus .opt input{border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;background:var(--ground);font-family:"JetBrains Mono",monospace;font-size:14px;
+    color:var(--ink);outline:none;width:100%}
+  .pane-modbus .opt select:focus,.pane-modbus .opt input:focus{border-color:var(--accent);background:var(--card)}
+  .pane-modbus .opt.hidden{display:none}
+  .pane-modbus .checkline{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink);
+    cursor:pointer;user-select:none;margin-top:14px}
+  .pane-modbus .checkline input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+  .pane-modbus .checkline .sub{color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:11px}
+  .pane-modbus .result{background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:22px;border-left:4px solid var(--accent);margin-bottom:14px}
+  .pane-modbus .result .rl{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:10px}
+  .pane-modbus .value-big{font-family:"JetBrains Mono",monospace;font-weight:700;color:#EAEEF4;
+    font-size:clamp(30px,9vw,48px);line-height:1.1;word-break:break-all}
+  .pane-modbus .value-big .unit{font-size:.5em;color:#8A94A6;font-weight:500;margin-left:.35em}
+  .pane-modbus .value-big.err{color:var(--danger);font-size:clamp(18px,4.5vw,22px);font-weight:600}
+  .pane-modbus .copy{margin-top:14px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#C4CCD9;
+    font-family:"JetBrains Mono",monospace;font-size:12px;padding:7px 12px;border-radius:8px;transition:.15s}
+  .pane-modbus .copy:hover{background:rgba(255,255,255,.12);color:#fff}
+  .pane-modbus .copy.done{color:var(--accent)}
+  .pane-modbus .copy:disabled{opacity:.4;cursor:not-allowed}
+  .pane-modbus .detail{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--ink)}
+  .pane-modbus .detail .drow{display:flex;justify-content:space-between;gap:14px;padding:8px 0;
+    border-bottom:1px solid var(--line)}
+  .pane-modbus .detail .drow:last-child{border-bottom:none}
+  .pane-modbus .detail .dk{color:var(--muted)}
+  .pane-modbus .detail .dv{text-align:right;word-break:break-all;font-weight:600}
+  .pane-modbus .examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .pane-modbus .ex{font-family:"JetBrains Mono",monospace;font-size:12px;padding:6px 11px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;transition:.15s}
+  .pane-modbus .ex:hover{border-color:var(--accent);color:var(--ink)}
+  .pane-modbus .note{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5}
+
+  footer{margin-top:22px;text-align:center;color:var(--muted);font-size:13px}
+  :focus-visible{outline:2px solid var(--hex);outline-offset:3px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">O&amp;M toolkit</div>
+    <h1>Cơ số &amp; thanh ghi</h1>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="convert">Chuyển cơ số <span class="badge">2⇄8⇄10⇄16</span></button>
+    <button class="tab" data-tab="modbus">Đọc thanh ghi <span class="badge">Modbus</span></button>
+  </div>
+
+  <!-- ================= TAB 1 ================= -->
+  <section class="pane pane-convert active" id="pane-convert">
+    <p class="subtitle">Chọn hệ muốn nhập (hàng có viền sáng), gõ số vào đó — ba hệ còn lại tự đổi theo và không nhập được.</p>
+    <div class="rows" id="rows"></div>
+    <div class="hint" id="hint"></div>
+    <div class="controls">
+      <button class="chip on" id="grpChip" title="Nhóm chữ số cho dễ đọc">Nhóm chữ số</button>
+      <button class="chip" id="upperChip" title="Chữ hoa cho hex">HEX chữ hoa</button>
+      <button class="chip" id="prefixChip" title="Thêm tiền tố 0b / 0o / 0x">Tiền tố 0b/0o/0x</button>
+      <button class="chip" id="clearChip">Xoá</button>
+    </div>
+  </section>
+
+  <!-- ================= TAB 2 ================= -->
+  <section class="pane pane-modbus" id="pane-modbus">
+    <p class="subtitle">Nhập giá trị thô của thanh ghi 16-bit, chọn kiểu dữ liệu và hệ số — trả về giá trị kỹ thuật thật. Kiểu / gain tra theo point-table của thiết bị.</p>
+
+    <div class="card">
+      <div class="card-label"><span>Kiểu dữ liệu</span></div>
+      <div class="types" id="types">
+        <button class="type on" data-type="uint16">uint16<small>1 word · không dấu</small></button>
+        <button class="type" data-type="int16">int16<small>1 word · có dấu</small></button>
+        <button class="type" data-type="uint32">uint32<small>2 word · không dấu</small></button>
+        <button class="type" data-type="int32">int32<small>2 word · có dấu</small></button>
+        <button class="type" data-type="float32">float32<small>2 word · IEEE-754</small></button>
+      </div>
+      <div class="examples">
+        <button class="ex" data-ex="temp">VD: nhiệt độ −2.0°C (int16, gain 0.1)</button>
+        <button class="ex" data-ex="freq">VD: 50.00 Hz (uint16, gain 0.01)</button>
+        <button class="ex" data-ex="energy">VD: 100000 kWh (uint32)</button>
+        <button class="ex" data-ex="pf">VD: −20 (int16 thô)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <span>Giá trị thô thanh ghi</span>
+        <span class="radix-toggle" id="radixToggle">
+          <button data-radix="hex" class="on">HEX</button>
+          <button data-radix="dec">DEC</button>
+        </span>
+      </div>
+      <div class="words" id="words">
+        <div class="word" data-idx="0">
+          <div class="wl">Reg 0 <span class="pfx">0x</span></div>
+          <input inputmode="text" autocomplete="off" spellcheck="false" placeholder="0000">
+        </div>
+        <div class="word" data-idx="1">
+          <div class="wl">Reg 1 <span class="pfx">0x</span></div>
+          <input inputmode="text" autocomplete="off" spellcheck="false" placeholder="0000">
+        </div>
+      </div>
+      <div class="note" id="wordsNote"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label"><span>Tuỳ chọn diễn giải</span></div>
+      <div class="opt-grid">
+        <div class="opt" id="orderOpt">
+          <span class="ol">Thứ tự word (32-bit)</span>
+          <select id="wordOrder">
+            <option value="hi">Reg 0 = word cao (big-endian)</option>
+            <option value="lo">Reg 0 = word thấp (word swap)</option>
+          </select>
+        </div>
+        <div class="opt">
+          <span class="ol">Hệ số (gain × giá trị)</span>
+          <input id="gain" inputmode="decimal" value="1" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="opt">
+          <span class="ol">Đơn vị (tuỳ chọn)</span>
+          <input id="unit" value="" placeholder="V, A, Hz, kWh, °C…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="opt">
+          <span class="ol">Số chữ số thập phân</span>
+          <select id="decimals">
+            <option value="auto" selected>Tự động</option>
+            <option value="0">0</option><option value="1">1</option>
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          </select>
+        </div>
+      </div>
+      <label class="checkline">
+        <input type="checkbox" id="byteSwap">
+        <span>Hoán byte trong mỗi word <span class="sub">(byte swap — chỉ khi gateway trả sai thứ tự byte)</span></span>
+      </label>
+    </div>
+
+    <div class="result">
+      <div class="rl">Giá trị kỹ thuật</div>
+      <div class="value-big" id="scaled"><span style="color:#3A4150;font-weight:400">—</span></div>
+      <button class="copy" id="copyBtn" disabled>Copy</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label"><span>Chi tiết</span></div>
+      <div class="detail" id="detail"></div>
+    </div>
+  </section>
+
+  <footer>Chạy offline · BigInt cho cơ số · bù-2 &amp; IEEE-754 cho thanh ghi</footer>
+</div>
+
+<script>
+/* ---------- tab switching ---------- */
+(function(){
+  const tabs = document.getElementById('tabs');
+  tabs.addEventListener('click', e=>{
+    const btn=e.target.closest('.tab'); if(!btn) return;
+    const name=btn.dataset.tab;
+    [...tabs.children].forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('pane-convert').classList.toggle('active', name==='convert');
+    document.getElementById('pane-modbus').classList.toggle('active', name==='modbus');
+  });
+})();
+
+/* ---------- TAB 1 : base converter ---------- */
+(function(){
+  const BASES = {
+    dec:{radix:10,name:"Thập phân",    tag:"base 10",group:3,uiPrefix:"",  bigPrefix:"",  strip:null,   re:/^\d+$/,          mode:"numeric"},
+    bin:{radix:2, name:"Nhị phân",     tag:"base 2", group:4,uiPrefix:"0b",bigPrefix:"0b",strip:/^0b/i, re:/^[01]+$/,        mode:"numeric"},
+    oct:{radix:8, name:"Bát phân",     tag:"base 8", group:3,uiPrefix:"0o",bigPrefix:"0o",strip:/^0o/i, re:/^[0-7]+$/,       mode:"numeric"},
+    hex:{radix:16,name:"Thập lục phân",tag:"base 16",group:4,uiPrefix:"0x",bigPrefix:"0x",strip:/^0x/i, re:/^[0-9a-fA-F]+$/, mode:"text"}
+  };
+  const ORDER=["dec","bin","oct","hex"];
+  const opts={group:true,upper:false,prefix:false};
+  let active="dec", value=null;
+
+  const rowsEl=document.getElementById('rows');
+  const hint=document.getElementById('hint');
+  const inputs={}, copies={};
+
+  ORDER.forEach(base=>{
+    const b=BASES[base];
+    const row=document.createElement('div');
+    row.className='row'; row.dataset.base=base;
+    row.innerHTML=
+      '<div class="r-head">'+
+        '<button class="sel" type="button" role="radio" aria-checked="false">'+
+          '<span class="dot"></span>'+
+          '<span class="r-name">'+b.name+' <span class="r-base">'+b.tag+'</span></span>'+
+        '</button>'+
+        '<button class="copy" type="button">Copy</button>'+
+      '</div>'+
+      '<input class="val" autocomplete="off" spellcheck="false" placeholder="—" aria-label="'+b.name+'">';
+    rowsEl.appendChild(row);
+    const inp=row.querySelector('.val'), cp=row.querySelector('.copy');
+    inputs[base]=inp; copies[base]=cp;
+    row.addEventListener('click',e=>{ if(e.target.closest('.copy')) return; setActive(base); });
+    inp.addEventListener('input',()=>{ if(active===base) onType(); });
+    cp.addEventListener('click',e=>{ e.stopPropagation(); doCopy(base); });
+  });
+
+  function stripInput(base,raw){
+    let s=raw.trim().replace(/\s+/g,''); let neg=false;
+    if(s[0]==='-'){neg=true;s=s.slice(1);}
+    const st=BASES[base].strip; if(st) s=s.replace(st,'');
+    return {neg,body:s};
+  }
+  function onType(){
+    const inp=inputs[active], raw=inp.value;
+    if(raw.trim()===''){value=null;inp.classList.remove('invalid');renderReadouts();setHint('empty');return;}
+    const {neg,body}=stripInput(active,raw);
+    if(body===''||!BASES[active].re.test(body)){value=null;inp.classList.add('invalid');renderReadouts();setHint('invalid');return;}
+    inp.classList.remove('invalid');
+    let v=BigInt(BASES[active].bigPrefix+body.toLowerCase()); if(neg) v=-v;
+    value=v; renderReadouts(); setHint('ok');
+  }
+  function groupRight(str,size){
+    if(!opts.group) return str;
+    let out=[],i=str.length;
+    while(i>0){out.unshift(str.slice(Math.max(0,i-size),i));i-=size;}
+    return out.join(' ');
+  }
+  function fmtDisplay(base){
+    if(value===null) return '';
+    const neg=value<0n,abs=neg?-value:value;
+    let s=abs.toString(BASES[base].radix);
+    if(base==='hex'&&opts.upper) s=s.toUpperCase();
+    s=groupRight(s,BASES[base].group);
+    const pre=(opts.prefix&&BASES[base].uiPrefix)?BASES[base].uiPrefix+' ':'';
+    return (neg?'-':'')+pre+s;
+  }
+  function fmtPlain(base){
+    if(value===null) return '';
+    const neg=value<0n,abs=neg?-value:value;
+    let s=abs.toString(BASES[base].radix);
+    if(base==='hex'&&opts.upper) s=s.toUpperCase();
+    const pre=(opts.prefix&&BASES[base].uiPrefix)?BASES[base].uiPrefix:'';
+    return (neg?'-':'')+pre+s;
+  }
+  function fmtRaw(base){
+    if(value===null) return '';
+    const neg=value<0n,abs=neg?-value:value;
+    let s=abs.toString(BASES[base].radix);
+    if(base==='hex'&&opts.upper) s=s.toUpperCase();
+    return (neg?'-':'')+s;
+  }
+  function renderReadouts(){
+    ORDER.forEach(base=>{
+      if(base===active) return;
+      inputs[base].value=fmtDisplay(base);
+      copies[base].disabled=(value===null);
+    });
+    copies[active].disabled=(value===null);
+  }
+  function setActive(base,focusIt){
+    if(focusIt===undefined) focusIt=true;
+    if(base===active){ if(focusIt) inputs[base].focus(); return; }
+    active=base;
+    ORDER.forEach(b=>{
+      const row=rowsEl.querySelector('.row[data-base="'+b+'"]');
+      const isA=(b===active);
+      row.classList.toggle('active',isA);
+      row.querySelector('.sel').setAttribute('aria-checked',isA?'true':'false');
+      inputs[b].disabled=!isA;
+      inputs[b].setAttribute('inputmode',BASES[b].mode);
+    });
+    inputs[active].value=fmtRaw(active);
+    inputs[active].classList.remove('invalid');
+    renderReadouts();
+    setHint(value===null?'empty':'ok');
+    if(focusIt) inputs[active].focus();
+  }
+  function setHint(state){
+    hint.classList.remove('err');
+    if(state==='empty'){hint.textContent='Đang nhập ở hệ '+BASES[active].name.toLowerCase()+'.';return;}
+    if(state==='invalid'){
+      const ok={dec:'0–9',bin:'0 và 1',oct:'0–7',hex:'0–9 và A–F'}[active];
+      hint.textContent='Không hợp lệ · hệ '+BASES[active].name.toLowerCase()+' chỉ nhận '+ok+' (dấu − ở đầu nếu là số âm).';
+      hint.classList.add('err');return;
+    }
+    const neg=value<0n,abs=neg?-value:value;
+    const bitLen=abs===0n?1:abs.toString(2).length;
+    hint.textContent=bitLen+' bit · '+(neg?'số âm':'số không âm');
+  }
+  async function doCopy(base){
+    const txt=fmtPlain(base); if(!txt) return;
+    try{await navigator.clipboard.writeText(txt);}
+    catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(_){}document.body.removeChild(ta);}
+    const btn=copies[base],old=btn.textContent;
+    btn.textContent='Đã copy';btn.classList.add('done');
+    setTimeout(()=>{btn.textContent=old;btn.classList.remove('done');},1100);
+  }
+  function chip(id,key){
+    const el=document.getElementById(id);
+    el.addEventListener('click',()=>{
+      opts[key]=!opts[key];el.classList.toggle('on',opts[key]);
+      inputs[active].value=fmtRaw(active);renderReadouts();
+    });
+  }
+  chip('grpChip','group');chip('upperChip','upper');chip('prefixChip','prefix');
+  document.getElementById('clearChip').addEventListener('click',()=>{
+    value=null;inputs[active].value='';inputs[active].classList.remove('invalid');
+    renderReadouts();setHint('empty');inputs[active].focus();
+  });
+  setActive('dec',false);   // no autofocus on load
+})();
+
+/* ---------- TAB 2 : modbus decoder ---------- */
+(function(){
+  const TYPES={
+    uint16:{words:1,is32:false,signed:false,float:false},
+    int16: {words:1,is32:false,signed:true, float:false},
+    uint32:{words:2,is32:true, signed:false,float:false},
+    int32: {words:2,is32:true, signed:true, float:false},
+    float32:{words:2,is32:true,signed:false,float:true}
+  };
+  let type="uint16", radix="hex";
+
+  const typesEl=document.getElementById('types');
+  const wordEls=[...document.querySelectorAll('#words .word')];
+  const wordInputs=wordEls.map(w=>w.querySelector('input'));
+  const wordPfx=wordEls.map(w=>w.querySelector('.pfx'));
+  const wordsNote=document.getElementById('wordsNote');
+  const radixTog=document.getElementById('radixToggle');
+  const orderOpt=document.getElementById('orderOpt');
+  const wordOrder=document.getElementById('wordOrder');
+  const gainEl=document.getElementById('gain');
+  const unitEl=document.getElementById('unit');
+  const decEl=document.getElementById('decimals');
+  const byteSwap=document.getElementById('byteSwap');
+  const scaledEl=document.getElementById('scaled');
+  const detailEl=document.getElementById('detail');
+  const copyBtn=document.getElementById('copyBtn');
+
+  const bswap=w=>(((w&0xFF)<<8)|(w>>>8))&0xFFFF;
+  const i16=w=>w>=0x8000?w-0x10000:w;
+  const i32=v=>v>=0x80000000?v-0x100000000:v;
+  function f32(u32){const dv=new DataView(new ArrayBuffer(4));dv.setUint32(0,u32>>>0,false);return dv.getFloat32(0,false);}
+  const hex4=n=>'0x'+n.toString(16).toUpperCase().padStart(4,'0');
+  const hex8=n=>'0x'+n.toString(16).toUpperCase().padStart(8,'0');
+
+  function parseWord(str){
+    let s=str.trim().replace(/\s+/g,'');
+    if(s==='') return {empty:true};
+    if(radix==='hex'){
+      s=s.replace(/^0x/i,'');
+      if(!/^[0-9a-fA-F]+$/.test(s)) return {invalid:true};
+      const v=parseInt(s,16); if(v>0xFFFF) return {invalid:true};
+      return {v};
+    }else{
+      if(!/^\d+$/.test(s)) return {invalid:true};
+      const v=parseInt(s,10); if(v>0xFFFF) return {invalid:true};
+      return {v};
+    }
+  }
+  function fmtNum(x){
+    if(!isFinite(x)) return String(x);
+    const d=decEl.value;
+    if(d==='auto') return (Math.round(x*1e6)/1e6).toString();
+    return x.toFixed(parseInt(d,10));
+  }
+  function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function refreshWordUI(){
+    const n=TYPES[type].words;
+    wordEls[1].style.display=(n===2)?'':'none';
+    orderOpt.classList.toggle('hidden',n!==2);
+    wordPfx.forEach(p=>p.textContent=radix==='hex'?'0x':'');
+    wordInputs.forEach(inp=>inp.setAttribute('inputmode',radix==='hex'?'text':'numeric'));
+    wordsNote.textContent=(n===2)
+      ?'Reg 0 là thanh ghi đọc trước, Reg 1 là thanh ghi liền sau. Nếu ghép ra số vô lý, thử đổi "Thứ tự word".'
+      :'Chỉ dùng 1 thanh ghi 16-bit.';
+  }
+  function compute(){
+    const t=TYPES[type];
+    const p0=parseWord(wordInputs[0].value);
+    const p1=t.words===2?parseWord(wordInputs[1].value):{empty:true};
+    wordInputs[0].classList.toggle('invalid',!!p0.invalid);
+    wordInputs[1].classList.toggle('invalid',t.words===2&&!!p1.invalid);
+    const needBoth=t.words===2;
+    const anyInvalid=p0.invalid||(needBoth&&p1.invalid);
+    const anyEmpty=p0.empty||(needBoth&&p1.empty);
+    if(anyInvalid){showError(radix==='hex'?'Giá trị hex không hợp lệ (mỗi word ≤ 0xFFFF).':'Giá trị dec không hợp lệ (mỗi word 0…65535).');return;}
+    if(anyEmpty){showEmpty();return;}
+
+    let w0=p0.v,w1=needBoth?p1.v:0;
+    if(byteSwap.checked){w0=bswap(w0);if(needBoth)w1=bswap(w1);}
+
+    let interpreted,combined=null;
+    if(!t.is32){ interpreted=t.signed?i16(w0):w0; }
+    else{
+      const r0IsHigh=(wordOrder.value==='hi');
+      const hi=r0IsHigh?w0:w1, lo=r0IsHigh?w1:w0;
+      combined=hi*65536+lo;
+      if(t.float) interpreted=f32(combined);
+      else if(t.signed) interpreted=i32(combined);
+      else interpreted=combined;
+    }
+    const gain=parseFloat(gainEl.value);
+    const g=(gainEl.value.trim()===''||isNaN(gain))?1:gain;
+    const scaled=interpreted*g;
+    const unit=unitEl.value.trim();
+
+    scaledEl.classList.remove('err');
+    scaledEl.innerHTML=fmtNum(scaled)+(unit?' <span class="unit">'+escapeHtml(unit)+'</span>':'');
+    copyBtn.disabled=false;
+    copyBtn.dataset.copy=fmtNum(scaled)+(unit?' '+unit:'');
+
+    const rows=[];
+    rows.push(['Reg 0',hex4(p0.v)+'  ·  '+p0.v]);
+    if(needBoth) rows.push(['Reg 1',hex4(p1.v)+'  ·  '+p1.v]);
+    if(byteSwap.checked) rows.push(['Sau byte-swap',needBoth?hex4(w0)+' , '+hex4(w1):hex4(w0)]);
+    if(combined!==null) rows.push(['Ghép 32-bit',hex8(combined)+'  ·  '+combined]);
+    rows.push(['Diễn giải ('+type+')',fmtNum(interpreted)]);
+    rows.push(['× gain '+g,fmtNum(scaled)+(unit?' '+unit:'')]);
+    detailEl.innerHTML=rows.map(r=>'<div class="drow"><span class="dk">'+r[0]+'</span><span class="dv">'+escapeHtml(String(r[1]))+'</span></div>').join('');
+  }
+  function showEmpty(){
+    scaledEl.classList.remove('err');
+    scaledEl.innerHTML='<span style="color:#3A4150;font-weight:400">—</span>';
+    copyBtn.disabled=true;
+    detailEl.innerHTML='<div class="drow"><span class="dk">Nhập giá trị thô để bắt đầu</span><span class="dv"></span></div>';
+  }
+  function showError(msg){scaledEl.classList.add('err');scaledEl.textContent=msg;copyBtn.disabled=true;detailEl.innerHTML='';}
+
+  typesEl.addEventListener('click',e=>{
+    const btn=e.target.closest('.type');if(!btn)return;
+    type=btn.dataset.type;
+    [...typesEl.children].forEach(b=>b.classList.toggle('on',b===btn));
+    refreshWordUI();compute();
+  });
+  radixTog.addEventListener('click',e=>{
+    const btn=e.target.closest('button');if(!btn)return;
+    radix=btn.dataset.radix;
+    [...radixTog.children].forEach(b=>b.classList.toggle('on',b===btn));
+    refreshWordUI();compute();
+  });
+  wordInputs.forEach(inp=>inp.addEventListener('input',compute));
+  [wordOrder,gainEl,unitEl,decEl].forEach(el=>el.addEventListener('input',compute));
+  byteSwap.addEventListener('change',compute);
+  copyBtn.addEventListener('click',async()=>{
+    const txt=copyBtn.dataset.copy||'';if(!txt)return;
+    try{await navigator.clipboard.writeText(txt);}
+    catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(_){}document.body.removeChild(ta);}
+    const old=copyBtn.textContent;copyBtn.textContent='Đã copy';copyBtn.classList.add('done');
+    setTimeout(()=>{copyBtn.textContent=old;copyBtn.classList.remove('done');},1100);
+  });
+
+  const EX={
+    temp:  {type:'int16', radix:'hex',w:['FFEC',''],    gain:'0.1', unit:'°C', order:'hi',bs:false},
+    freq:  {type:'uint16',radix:'dec',w:['5000',''],    gain:'0.01',unit:'Hz', order:'hi',bs:false},
+    energy:{type:'uint32',radix:'hex',w:['0001','86A0'],gain:'1',   unit:'kWh',order:'hi',bs:false},
+    pf:    {type:'int16', radix:'hex',w:['FFEC',''],    gain:'1',   unit:'',   order:'hi',bs:false}
+  };
+  document.querySelectorAll('.pane-modbus .ex').forEach(b=>b.addEventListener('click',()=>{
+    const e=EX[b.dataset.ex];
+    type=e.type;[...typesEl.children].forEach(x=>x.classList.toggle('on',x.dataset.type===type));
+    radix=e.radix;[...radixTog.children].forEach(x=>x.classList.toggle('on',x.dataset.radix===radix));
+    refreshWordUI();
+    wordInputs[0].value=e.w[0];wordInputs[1].value=e.w[1];
+    gainEl.value=e.gain;unitEl.value=e.unit;wordOrder.value=e.order;byteSwap.checked=e.bs;
+    compute();
+  }));
+
+  refreshWordUI();showEmpty();
+})();
+</script>
+</body>
+</html>
